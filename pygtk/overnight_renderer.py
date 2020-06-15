@@ -10,6 +10,8 @@ import time
 from widgets import create_label, create_entry, create_button, \
     create_file_chooser_dialog, create_combo_box, create_check_button
 
+from render_task import RenderTask
+
 class MainWindow(Gtk.Window):
     grid = Gtk.Grid(column_spacing=12, row_spacing=12)
 
@@ -25,17 +27,7 @@ class MainWindow(Gtk.Window):
     python_expressions_entry = None
     after_rendering_combo_box = None
 
-    blend_file = ""
-    render_engine = ""
-    render_device = ""
-    render_samples = 128
-    output_type = ""
-    start_frame = 1
-    end_frame = 250
-    output_format = ""
-    output_file = ""
-    python_expressions = ""
-    after_rendering = ""
+    current_render_task = None
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -192,65 +184,81 @@ class MainWindow(Gtk.Window):
         dialog.add_filter(filter_blend)
 
     def on_render_clicked(self, button: Gtk.Button) -> None:
-        self.blend_file = self.blend_file_entry.get_text()
+        blend_file = self.blend_file_entry.get_text()
 
         render_engine_iter = self.render_engine_combo_box.get_active_iter()
         render_engine_model = self.render_engine_combo_box.get_model()
-        self.render_engine = render_engine_model[render_engine_iter][1]
+        render_engine = render_engine_model[render_engine_iter][1]
 
         render_device_iter = self.render_device_combo_box.get_active_iter()
         render_device_model = self.render_device_combo_box.get_model()
-        self.render_device = render_device_model[render_device_iter][0]
+        render_device = render_device_model[render_device_iter][0]
 
-        self.render_samples = int(self.render_samples_entry.get_text())
+        render_samples = int(self.render_samples_entry.get_text())
 
         output_type_iter = self.output_type_combo_box.get_active_iter()
         output_type_model = self.output_type_combo_box.get_model()
-        self.output_type = output_type_model[output_type_iter][0]
+        output_type = output_type_model[output_type_iter][0]
 
-        self.start_frame = int(self.start_frame_entry.get_text())
+        start_frame = int(self.start_frame_entry.get_text())
 
-        self.end_frame = int(self.end_frame_entry.get_text())
+        end_frame = int(self.end_frame_entry.get_text())
 
         output_format_iter = self.output_format_combo_box.get_active_iter()
         output_format_model = self.output_format_combo_box.get_model()
-        self.output_format = output_format_model[output_format_iter][1]
+        output_format = output_format_model[output_format_iter][1]
 
-        self.output_file = self.output_file_entry.get_text()
+        output_file = self.output_file_entry.get_text()
 
-        self.python_expressions = self.python_expressions_entry.get_text()
+        python_expressions = self.python_expressions_entry.get_text()
 
         after_rendering_iter = self.after_rendering_combo_box.get_active_iter()
         after_rendering_model = self.after_rendering_combo_box.get_model()
-        self.after_rendering = after_rendering_model[after_rendering_iter][0]
+        after_rendering = after_rendering_model[after_rendering_iter][0]
+
+        self.current_render_task = RenderTask(
+            blend_file, render_engine, render_device, render_samples,
+            output_type, start_frame, end_frame, output_format, output_file,
+            python_expressions, after_rendering
+        )
 
         self.render()
 
     def render(self) -> None:
-        os.chdir(os.path.dirname(self.blend_file))
-        if self.output_type == "Animation":
+        os.chdir(os.path.dirname(self.current_render_task.blend_file))
+        if self.current_render_task.output_type == "Animation":
             os.system(
                 "blender -b {} -E {} -o {} -F {} -s {} -e {} "
                 "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
                 "bpy.context.scene.cycles.samples = {}; {}' "
                 "-a"
                 .format(
-                    os.path.basename(self.blend_file), self.render_engine,
-                    self.output_file, self.output_format, self.start_frame,
-                    self.end_frame, self.render_device, self.render_samples,
-                    self.python_expressions
+                    os.path.basename(self.current_render_task.blend_file),
+                    self.current_render_task.render_engine,
+                    self.current_render_task.output_file,
+                    self.current_render_task.output_format,
+                    self.current_render_task.start_frame,
+                    self.current_render_task.end_frame,
+                    self.current_render_task.render_device,
+                    self.current_render_task.render_samples,
+                    self.current_render_task.python_expressions
                 )
             )
-        elif self.output_type == "Single frame":
+        elif self.current_render_task.output_type == "Single frame":
             os.system(
                 "blender -b {} -E {} -o {} -F {} "
                 "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
                 "bpy.context.scene.cycles.samples = {}; {}' "
                 "-f {}"
                 .format(
-                    os.path.basename(self.blend_file), self.render_engine,
-                    self.output_file, self.output_format, self.render_device,
-                    self.render_samples, self.python_expressions, self.start_frame
+                    os.path.basename(self.current_render_task.blend_file),
+                    self.current_render_task.render_engine,
+                    self.current_render_task.output_file,
+                    self.current_render_task.output_format,
+                    self.current_render_task.render_device,
+                    self.current_render_task.render_samples,
+                    self.current_render_task.python_expressions,
+                    self.current_render_task.start_frame
                 )
             )
 
@@ -258,17 +266,17 @@ class MainWindow(Gtk.Window):
 
         Notify.init("Overnight Renderer")
 
-        if self.after_rendering == "Do nothing":
+        if self.current_render_task.after_rendering == "Do nothing":
             notification = Notify.Notification.new(
                 "Rendering {} finished"
-                .format(os.path.basename(self.blend_file))
+                .format(os.path.basename(self.current_render_task.blend_file))
             )
 
             notification.show()
-        elif self.after_rendering == "Suspend":
+        elif self.current_render_task.after_rendering == "Suspend":
             notification = Notify.Notification.new(
                 "Rendering {} finished"
-                .format(os.path.basename(self.blend_file)),
+                .format(os.path.basename(self.current_render_task.blend_file)),
                 "Suspending in 30 seconds!"
             )
 
@@ -277,10 +285,10 @@ class MainWindow(Gtk.Window):
             time.sleep(30)
             print("Suspending...")
             os.system("systemctl suspend")
-        elif self.after_rendering == "Shutdown":
+        elif self.current_render_task.after_rendering == "Shutdown":
             notification = Notify.Notification.new(
                 "Rendering {} finished"
-                .format(os.path.basename(self.blend_file)),
+                .format(os.path.basename(self.current_render_task.blend_file)),
                 "Shutting down in 30 seconds!"
             )
 
