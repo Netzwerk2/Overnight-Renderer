@@ -6,6 +6,7 @@ from gi.repository import Gtk, Notify
 
 import os
 import time
+import threading
 
 from widgets import create_label, create_entry, create_button, \
     create_file_chooser_dialog, create_combo_box, create_check_button, \
@@ -27,7 +28,8 @@ class MainWindow(Gtk.Window):
     output_file_entry = None
     python_expressions_entry = None
     after_rendering_combo_box = None
-    render_tasks_model = Gtk.ListStore(str, str, str)
+    render_button = None
+    render_tasks_model = Gtk.ListStore(str, str, str, str, bool)
 
     current_render_task = None
 
@@ -62,7 +64,7 @@ class MainWindow(Gtk.Window):
         self.render_samples_entry.set_text("128")
 
         output_type_label = create_label("Output Type")
-        output_types = ["Animation", "Single frame"]
+        output_types = ["Animation", "Single Frame"]
         self.output_type_combo_box = create_combo_box(labels=output_types)
         self.output_type_combo_box.connect("changed", self.on_output_type_changed)
 
@@ -107,10 +109,12 @@ class MainWindow(Gtk.Window):
             labels=after_rendering_options
         )
 
-        render_button = create_button("Render")
-        render_button.connect("clicked", self.on_render_clicked)
+        self.render_button = create_button("Render")
+        self.render_button.connect("clicked", self.on_render_clicked)
         
-        columns = ["File Name", "Output File", "Finished"]
+        columns = [
+            "File", "Engine", "Type", "Output", "Finished"
+        ]
         render_tasks_tree_view = create_tree_view(
             self.render_tasks_model, columns
         )
@@ -142,7 +146,7 @@ class MainWindow(Gtk.Window):
         self.grid.attach(self.python_expressions_entry, 1, 9, 1, 1)
         self.grid.attach(after_rendering_label, 0, 10, 1, 1)
         self.grid.attach(self.after_rendering_combo_box, 1, 10, 1, 1)
-        self.grid.attach(render_button, 0, 11, 3, 1)
+        self.grid.attach(self.render_button, 0, 11, 3, 1)
         self.grid.attach(render_tasks_tree_view, 0, 12, 3, 1)
 
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
@@ -167,7 +171,7 @@ class MainWindow(Gtk.Window):
 
         if output_type == "Animation":
             self.end_frame_entry.set_sensitive(True)
-        elif output_type == "Single frame":
+        elif output_type == "Single Frame":
             self.end_frame_entry.set_sensitive(False)
 
     def on_output_file_clicked(self, button: Gtk.Button) -> None:
@@ -224,10 +228,21 @@ class MainWindow(Gtk.Window):
         after_rendering_iter = self.after_rendering_combo_box.get_active_iter()
         after_rendering_model = self.after_rendering_combo_box.get_model()
         after_rendering = after_rendering_model[after_rendering_iter][0]
-
-        self.render_tasks_model.append([
-            os.path.basename(blend_file), output_file, "False"
-        ])
+    
+        self.render_tasks_model.clear()
+        if output_type == "Animation":
+            self.render_tasks_model.append([
+                os.path.basename(blend_file),
+                render_engine_model[render_engine_iter][0],
+                output_type + " ({}-{})".format(start_frame, end_frame),
+                output_file, False
+            ])
+        elif output_type == "Single Frame":
+            self.render_tasks_model.append([
+                os.path.basename(blend_file),
+                render_engine_model[render_engine_iter][0],
+                output_type + " ({})".format(start_frame), output_file, False
+            ])
 
         self.current_render_task = RenderTask(
             blend_file, render_engine, render_device, render_samples,
@@ -235,7 +250,8 @@ class MainWindow(Gtk.Window):
             python_expressions, after_rendering, False
         )
 
-        self.render()
+        self.render_button.set_sensitive(False)
+        threading.Thread(target=self.render).start()
 
     def render(self) -> None:
         os.chdir(os.path.dirname(self.current_render_task.blend_file))
@@ -257,7 +273,7 @@ class MainWindow(Gtk.Window):
                     self.current_render_task.python_expressions
                 )
             )
-        elif self.current_render_task.output_type == "Single frame":
+        elif self.current_render_task.output_type == "Single Frame":
             os.system(
                 "blender -b {} -E {} -o {} -F {} "
                 "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
@@ -276,6 +292,8 @@ class MainWindow(Gtk.Window):
             )
 
         print("Rendering complete!")
+        self.render_tasks_model[0][4] = True
+        self.render_button.set_sensitive(True)
 
         Notify.init("Overnight Renderer")
 
@@ -316,3 +334,4 @@ main_window = MainWindow()
 main_window.connect("delete-event", Gtk.main_quit)
 main_window.show_all()
 Gtk.main()
+
