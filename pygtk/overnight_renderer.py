@@ -8,7 +8,8 @@ import os
 import time
 
 from widgets import create_label, create_entry, create_button, \
-    create_file_chooser_dialog, create_combo_box, create_check_button
+    create_file_chooser_dialog, create_combo_box, create_check_button, \
+    create_tree_view
 
 from render_task import RenderTask
 
@@ -26,6 +27,7 @@ class MainWindow(Gtk.Window):
     output_file_entry = None
     python_expressions_entry = None
     after_rendering_combo_box = None
+    render_tasks_model = Gtk.ListStore(str, str, str)
 
     current_render_task = None
 
@@ -47,6 +49,7 @@ class MainWindow(Gtk.Window):
         engine_store = Gtk.ListStore(str, str)
         engine_store.append(["Eevee", "BLENDER_EEVEE"])
         engine_store.append(["Workbench", "BLENDER_WORKBENCH"])
+       
         engine_store.append(["Cycles", "CYCLES"])
         self.render_engine_combo_box = create_combo_box(model=engine_store)
 
@@ -58,20 +61,20 @@ class MainWindow(Gtk.Window):
         self.render_samples_entry = create_entry(True)
         self.render_samples_entry.set_text("128")
 
-        output_type_label = create_label("Output type")
+        output_type_label = create_label("Output Type")
         output_types = ["Animation", "Single frame"]
         self.output_type_combo_box = create_combo_box(labels=output_types)
         self.output_type_combo_box.connect("changed", self.on_output_type_changed)
 
-        start_frame_label = create_label("Start frame")
+        start_frame_label = create_label("Start Frame")
         self.start_frame_entry = create_entry(True)
         self.start_frame_entry.set_text("1")
 
-        end_frame_label = create_label("End frame")
+        end_frame_label = create_label("End Frame")
         self.end_frame_entry = create_entry(True)
         self.end_frame_entry.set_text("250")
 
-        output_format_label = create_label("Output format")
+        output_format_label = create_label("Output Format")
         format_store = Gtk.ListStore(str, str)
         format_store.append(["BMP", "BMP"])
         format_store.append(["Iris", "IRIS"])
@@ -106,6 +109,11 @@ class MainWindow(Gtk.Window):
 
         render_button = create_button("Render")
         render_button.connect("clicked", self.on_render_clicked)
+        
+        columns = ["File Name", "Output File", "Finished"]
+        render_tasks_tree_view = create_tree_view(
+            self.render_tasks_model, columns
+        )
 
         self.add(self.grid)
         self.grid.set_halign(Gtk.Align.CENTER)
@@ -135,6 +143,7 @@ class MainWindow(Gtk.Window):
         self.grid.attach(after_rendering_label, 0, 10, 1, 1)
         self.grid.attach(self.after_rendering_combo_box, 1, 10, 1, 1)
         self.grid.attach(render_button, 0, 11, 3, 1)
+        self.grid.attach(render_tasks_tree_view, 0, 12, 3, 1)
 
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
@@ -216,10 +225,14 @@ class MainWindow(Gtk.Window):
         after_rendering_model = self.after_rendering_combo_box.get_model()
         after_rendering = after_rendering_model[after_rendering_iter][0]
 
+        self.render_tasks_model.append([
+            os.path.basename(blend_file), output_file, "False"
+        ])
+
         self.current_render_task = RenderTask(
             blend_file, render_engine, render_device, render_samples,
             output_type, start_frame, end_frame, output_format, output_file,
-            python_expressions, after_rendering
+            python_expressions, after_rendering, False
         )
 
         self.render()

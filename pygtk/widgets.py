@@ -65,3 +65,12 @@ def create_combo_box(model: Gtk.ListStore=None, labels: List[str]=None) -> Gtk.C
 def create_check_button() -> Gtk.CheckButton:
     check_button = Gtk.CheckButton()
     return check_button
+
+
+def create_tree_view(model: Gtk.ListStore, columns: List[str]) -> Gtk.TreeView:
+    tree_view = Gtk.TreeView(model=model)
+    for i, column in enumerate(columns):
+        renderer_text = Gtk.CellRendererText()
+        column_text = Gtk.TreeViewColumn(column, renderer_text, text=i)
+        tree_view.append_column(column_text)
+    return tree_view
