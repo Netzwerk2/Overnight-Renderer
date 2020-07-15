@@ -7,6 +7,7 @@ from gi.repository import Gtk, Notify, GLib
 import os
 import time
 import threading
+from typing import Tuple
 
 from widgets import create_label, create_entry, create_button, \
     create_file_chooser_dialog, create_combo_box, create_check_button, \
@@ -29,9 +30,12 @@ class MainWindow(Gtk.Window):
     python_expressions_entry = None
     post_rendering_combo_box = None
     render_button = None
+    queue_button = None
     render_tasks_model = Gtk.ListStore(str, str, str, str, bool)
 
+    render_queue = []
     current_render_task = None
+    render_thread = None
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -51,8 +55,8 @@ class MainWindow(Gtk.Window):
         engine_store = Gtk.ListStore(str, str)
         engine_store.append(["Eevee", "BLENDER_EEVEE"])
         engine_store.append(["Workbench", "BLENDER_WORKBENCH"])
-       
         engine_store.append(["Cycles", "CYCLES"])
+
         self.render_engine_combo_box = create_combo_box(model=engine_store)
 
         render_device_label = create_label("Cycles Render Device")
@@ -111,7 +115,10 @@ class MainWindow(Gtk.Window):
 
         self.render_button = create_button("Render")
         self.render_button.connect("clicked", self.on_render_clicked)
-        
+
+        self.queue_button = create_button("Queue")
+        self.queue_button.connect("clicked", self.on_queue_clicked)
+
         columns = [
             "File", "Engine", "Type", "Output", "Finished"
         ]
@@ -146,8 +153,9 @@ class MainWindow(Gtk.Window):
         self.grid.attach(self.python_expressions_entry, 1, 9, 1, 1)
         self.grid.attach(post_rendering_label, 0, 10, 1, 1)
         self.grid.attach(self.post_rendering_combo_box, 1, 10, 1, 1)
-        self.grid.attach(self.render_button, 0, 11, 3, 1)
-        self.grid.attach(render_tasks_tree_view, 0, 12, 3, 1)
+        self.grid.attach(self.render_button, 1, 11, 1, 1)
+        self.grid.attach(self.queue_button, 1, 12, 1, 1)
+        self.grid.attach(render_tasks_tree_view, 0, 13, 3, 1)
 
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
@@ -197,11 +205,31 @@ class MainWindow(Gtk.Window):
         dialog.add_filter(filter_blend)
 
     def on_render_clicked(self, button: Gtk.Button) -> None:
+        if len(self.render_queue) == 0:
+            render_task, render_engine_display = self.create_render_task()
+            if render_task.blend_file == "" or render_task.output_file == "":
+                return
+            self.add_render_task_to_tree_view(render_engine_display, render_task)
+        self.current_render_task = self.render_queue[0]
+
+        self.render_button.set_sensitive(False)
+
+        render_lambda = lambda: self.render(self.current_render_task)
+        self.render_thread = threading.Thread(target=render_lambda).start()
+
+    def on_queue_clicked(self, button: Gtk.Button) -> None:
+        render_task, render_engine_display = self.create_render_task()
+        if render_task.blend_file == "" or render_task.output_file == "":
+            return
+        self.add_render_task_to_tree_view(render_engine_display, render_task)
+
+    def create_render_task(self) -> Tuple[RenderTask, str]:
         blend_file = self.blend_file_entry.get_text()
 
         render_engine_iter = self.render_engine_combo_box.get_active_iter()
         render_engine_model = self.render_engine_combo_box.get_model()
         render_engine = render_engine_model[render_engine_iter][1]
+        render_engine_display = render_engine_model[render_engine_iter][0]
 
         render_device_iter = self.render_device_combo_box.get_active_iter()
         render_device_model = self.render_device_combo_box.get_model()
@@ -225,113 +253,109 @@ class MainWindow(Gtk.Window):
 
         python_expressions = self.python_expressions_entry.get_text()
 
-        post_rendering_iter = self.post_rendering_combo_box.get_active_iter()
-        post_rendering_model = self.post_rendering_combo_box.get_model()
-        post_rendering = post_rendering_model[post_rendering_iter][0]
-    
-        self.render_tasks_model.clear()
-        if output_type == "Animation":
-            self.render_tasks_model.append([
-                os.path.basename(blend_file),
-                render_engine_model[render_engine_iter][0],
-                output_type + " ({}-{})".format(start_frame, end_frame),
-                output_file, False
-            ])
-        elif output_type == "Single Frame":
-            self.render_tasks_model.append([
-                os.path.basename(blend_file),
-                render_engine_model[render_engine_iter][0],
-                output_type + " ({})".format(start_frame), output_file, False
-            ])
-
-        self.current_render_task = RenderTask(
+        return RenderTask(
             blend_file, render_engine, render_device, render_samples,
             output_type, start_frame, end_frame, output_format, output_file,
-            python_expressions, post_rendering, False
-        )
+            python_expressions, False
+        ), render_engine_display
 
-        self.render_button.set_sensitive(False)
-        threading.Thread(target=self.render).start()
+    def add_render_task_to_tree_view(self, render_engine_display, render_task):
+        if render_task.output_type == "Animation":
+            self.render_tasks_model.append([
+                os.path.basename(render_task.blend_file),
+                render_engine_display,
+                render_task.output_type + " ({}-{})".format(
+                    render_task.start_frame, render_task.end_frame
+                ),
+                render_task.output_file,
+                False
+            ])
+        elif render_task.output_type == "Single Frame":
+            self.render_tasks_model.append([
+                os.path.basename(render_task.blend_file),
+                render_engine_display,
+                render_task.output_type + " ({})".format(
+                    render_task.start_frame
+                ),
+                render_task.output_file,
+                False
+            ])
+        self.render_queue.append(render_task)
 
-    def render(self) -> None:
-        os.chdir(os.path.dirname(self.current_render_task.blend_file))
-        if self.current_render_task.output_type == "Animation":
+    def render(self, render_task: RenderTask) -> None:
+        os.chdir(os.path.dirname(render_task.blend_file))
+        if render_task.output_type == "Animation":
             os.system(
                 "blender -b {} -E {} -o {} -F {} -s {} -e {} "
                 "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
                 "bpy.context.scene.cycles.samples = {}; {}' "
                 "-a"
                 .format(
-                    os.path.basename(self.current_render_task.blend_file),
-                    self.current_render_task.render_engine,
-                    self.current_render_task.output_file,
-                    self.current_render_task.output_format,
-                    self.current_render_task.start_frame,
-                    self.current_render_task.end_frame,
-                    self.current_render_task.render_device,
-                    self.current_render_task.render_samples,
-                    self.current_render_task.python_expressions
+                    os.path.basename(render_task.blend_file),
+                    render_task.render_engine,
+                    render_task.output_file,
+                    render_task.output_format,
+                    render_task.start_frame,
+                    render_task.end_frame,
+                    render_task.render_device,
+                    render_task.render_samples,
+                    render_task.python_expressions
                 )
             )
-        elif self.current_render_task.output_type == "Single Frame":
+        elif render_task.output_type == "Single Frame":
             os.system(
                 "blender -b {} -E {} -o {} -F {} "
                 "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
                 "bpy.context.scene.cycles.samples = {}; {}' "
                 "-f {}"
                 .format(
-                    os.path.basename(self.current_render_task.blend_file),
-                    self.current_render_task.render_engine,
-                    self.current_render_task.output_file,
-                    self.current_render_task.output_format,
-                    self.current_render_task.render_device,
-                    self.current_render_task.render_samples,
-                    self.current_render_task.python_expressions,
-                    self.current_render_task.start_frame
+                    os.path.basename(render_task.blend_file),
+                    render_task.render_engine,
+                    render_task.output_file,
+                    render_task.output_format,
+                    render_task.render_device,
+                    render_task.render_samples,
+                    render_task.python_expressions,
+                    render_task.start_frame
                 )
             )
         GLib.idle_add(self.post_rendering)
 
-        
-    def post_rendering(self) -> None:    
+
+    def post_rendering(self) -> None:
         print("Rendering complete!")
-        self.render_tasks_model[0][4] = True
+        Notify.init("Overnight Renderer")
+        notification = Notify.Notification.new(
+            "Rendering {} finished"
+            .format(os.path.basename(self.current_render_task.blend_file))
+        )
+        notification.show()
+
+        self.current_render_task.finished = True
+        self.render_tasks_model[self.render_queue.index(self.current_render_task)][4] = True
+#        self.render_thread.join()
+
+        for render_task in self.render_queue:
+            if not render_task.finished:
+                self.current_render_task = render_task
+                render_lambda = lambda: self.render(self.current_render_task)
+                self.render_thread = threading.Thread(target=render_lambda).start()
+                return
+
         self.render_button.set_sensitive(True)
 
-        Notify.init("Overnight Renderer")
+        post_rendering_iter = self.post_rendering_combo_box.get_active_iter()
+        post_rendering_model = self.post_rendering_combo_box.get_model()
+        post_rendering = post_rendering_model[post_rendering_iter][0]
 
-        if self.current_render_task.post_rendering == "Do nothing":
-            notification = Notify.Notification.new(
-                "Rendering {} finished"
-                .format(os.path.basename(self.current_render_task.blend_file))
-            )
-
-            notification.show()
-        elif self.current_render_task.post_rendering == "Suspend":
-            notification = Notify.Notification.new(
-                "Rendering {} finished"
-                .format(os.path.basename(self.current_render_task.blend_file)),
-                "Suspending in 30 seconds!"
-            )
-
-            notification.show()
-
+        if post_rendering == "Suspend":
             time.sleep(30)
             print("Suspending...")
             os.system("systemctl suspend")
-        elif self.current_render_task.post_rendering == "Shutdown":
-            notification = Notify.Notification.new(
-                "Rendering {} finished"
-                .format(os.path.basename(self.current_render_task.blend_file)),
-                "Shutting down in 30 seconds!"
-            )
-
-            notification.show()
-
+        elif post_rendering == "Shutdown":
             time.sleep(30)
             print("Shutting down...")
             os.system("poweroff")
-
 
 
 main_window = MainWindow()

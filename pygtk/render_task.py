@@ -3,7 +3,7 @@ class RenderTask():
         self, blend_file: str, render_engine: str, render_device: str,
         render_samples: int, output_type: str, start_frame: int, end_frame: int,
         output_format: str, output_file: str, python_expressions: str,
-        post_rendering: str, finished: bool
+        finished: bool
     ) -> None:
         self.blend_file = blend_file
         self.render_engine = render_engine
@@ -15,5 +15,4 @@ class RenderTask():
         self.output_format = output_format
         self.output_file = output_file
         self.python_expressions = python_expressions
-        self.post_rendering = post_rendering
         self.finished = finished
