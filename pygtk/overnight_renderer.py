@@ -2,7 +2,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Notify", "0.7")
-from gi.repository import Gtk, Notify
+from gi.repository import Gtk, Notify, GLib
 
 import os
 import time
@@ -27,7 +27,7 @@ class MainWindow(Gtk.Window):
     output_format_combo_box = None
     output_file_entry = None
     python_expressions_entry = None
-    after_rendering_combo_box = None
+    post_rendering_combo_box = None
     render_button = None
     render_tasks_model = Gtk.ListStore(str, str, str, str, bool)
 
@@ -103,10 +103,10 @@ class MainWindow(Gtk.Window):
         python_expressions_label = create_label("Python expressions")
         self.python_expressions_entry = create_entry(False)
 
-        after_rendering_label = create_label("After rendering is finished")
-        after_rendering_options = ["Do nothing", "Suspend", "Shutdown"]
-        self.after_rendering_combo_box = create_combo_box(
-            labels=after_rendering_options
+        post_rendering_label = create_label("After rendering is finished")
+        post_rendering_options = ["Do nothing", "Suspend", "Shutdown"]
+        self.post_rendering_combo_box = create_combo_box(
+            labels=post_rendering_options
         )
 
         self.render_button = create_button("Render")
@@ -144,8 +144,8 @@ class MainWindow(Gtk.Window):
         self.grid.attach(output_file_button, 2, 8, 1, 1)
         self.grid.attach(python_expressions_label, 0, 9, 1, 1)
         self.grid.attach(self.python_expressions_entry, 1, 9, 1, 1)
-        self.grid.attach(after_rendering_label, 0, 10, 1, 1)
-        self.grid.attach(self.after_rendering_combo_box, 1, 10, 1, 1)
+        self.grid.attach(post_rendering_label, 0, 10, 1, 1)
+        self.grid.attach(self.post_rendering_combo_box, 1, 10, 1, 1)
         self.grid.attach(self.render_button, 0, 11, 3, 1)
         self.grid.attach(render_tasks_tree_view, 0, 12, 3, 1)
 
@@ -225,9 +225,9 @@ class MainWindow(Gtk.Window):
 
         python_expressions = self.python_expressions_entry.get_text()
 
-        after_rendering_iter = self.after_rendering_combo_box.get_active_iter()
-        after_rendering_model = self.after_rendering_combo_box.get_model()
-        after_rendering = after_rendering_model[after_rendering_iter][0]
+        post_rendering_iter = self.post_rendering_combo_box.get_active_iter()
+        post_rendering_model = self.post_rendering_combo_box.get_model()
+        post_rendering = post_rendering_model[post_rendering_iter][0]
     
         self.render_tasks_model.clear()
         if output_type == "Animation":
@@ -247,7 +247,7 @@ class MainWindow(Gtk.Window):
         self.current_render_task = RenderTask(
             blend_file, render_engine, render_device, render_samples,
             output_type, start_frame, end_frame, output_format, output_file,
-            python_expressions, after_rendering, False
+            python_expressions, post_rendering, False
         )
 
         self.render_button.set_sensitive(False)
@@ -290,21 +290,24 @@ class MainWindow(Gtk.Window):
                     self.current_render_task.start_frame
                 )
             )
+        GLib.idle_add(self.post_rendering)
 
+        
+    def post_rendering(self) -> None:    
         print("Rendering complete!")
         self.render_tasks_model[0][4] = True
         self.render_button.set_sensitive(True)
 
         Notify.init("Overnight Renderer")
 
-        if self.current_render_task.after_rendering == "Do nothing":
+        if self.current_render_task.post_rendering == "Do nothing":
             notification = Notify.Notification.new(
                 "Rendering {} finished"
                 .format(os.path.basename(self.current_render_task.blend_file))
             )
 
             notification.show()
-        elif self.current_render_task.after_rendering == "Suspend":
+        elif self.current_render_task.post_rendering == "Suspend":
             notification = Notify.Notification.new(
                 "Rendering {} finished"
                 .format(os.path.basename(self.current_render_task.blend_file)),
@@ -316,7 +319,7 @@ class MainWindow(Gtk.Window):
             time.sleep(30)
             print("Suspending...")
             os.system("systemctl suspend")
-        elif self.current_render_task.after_rendering == "Shutdown":
+        elif self.current_render_task.post_rendering == "Shutdown":
             notification = Notify.Notification.new(
                 "Rendering {} finished"
                 .format(os.path.basename(self.current_render_task.blend_file)),
@@ -328,6 +331,7 @@ class MainWindow(Gtk.Window):
             time.sleep(30)
             print("Shutting down...")
             os.system("poweroff")
+
 
 
 main_window = MainWindow()
