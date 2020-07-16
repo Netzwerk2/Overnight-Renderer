@@ -2,7 +2,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Notify", "0.7")
-from gi.repository import Gtk, Notify, GLib
+from gi.repository import Gtk, Notify, GLib, Gdk
 
 import os
 import time
@@ -125,6 +125,7 @@ class MainWindow(Gtk.Window):
         render_tasks_tree_view = create_tree_view(
             self.render_tasks_model, columns
         )
+        render_tasks_tree_view.connect("key-press-event", self.on_tree_view_key_pressed)
 
         self.add(self.grid)
         self.grid.set_halign(Gtk.Align.CENTER)
@@ -210,7 +211,11 @@ class MainWindow(Gtk.Window):
             if render_task.blend_file == "" or render_task.output_file == "":
                 return
             self.add_render_task_to_tree_view(render_engine_display, render_task)
-        self.current_render_task = self.render_queue[0]
+            self.current_render_task = self.render_queue[0]
+        else:
+            for render_task in self.render_queue:
+                if not render_task.finished:
+                    self.current_render_task = render_task
 
         self.render_button.set_sensitive(False)
 
@@ -321,7 +326,6 @@ class MainWindow(Gtk.Window):
             )
         GLib.idle_add(self.post_rendering)
 
-
     def post_rendering(self) -> None:
         print("Rendering complete!")
         Notify.init("Overnight Renderer")
@@ -357,6 +361,13 @@ class MainWindow(Gtk.Window):
             print("Shutting down...")
             os.system("poweroff")
 
+    def on_tree_view_key_pressed(self, tree_view: Gtk.TreeView, event: Gdk.EventKey) -> None:
+        keyname = Gdk.keyval_name(event.keyval)
+        if keyname == "Delete":
+            del self.render_queue[tree_view.get_selection().get_selected_rows()[1][0][0]]
+            model, iter = tree_view.get_selection().get_selected()
+            model.remove(iter)
+        
 
 main_window = MainWindow()
 main_window.connect("delete-event", Gtk.main_quit)
