@@ -193,8 +193,6 @@ class MainWindow(Gtk.Window):
 
         if response == Gtk.ResponseType.OK:
             self.output_file_entry.set_text(file_chooser_dialog.get_filename())
-        else:
-            pass
 
         file_chooser_dialog.destroy()
 
@@ -220,7 +218,8 @@ class MainWindow(Gtk.Window):
         self.render_button.set_sensitive(False)
 
         render_lambda = lambda: self.render(self.current_render_task)
-        self.render_thread = threading.Thread(target=render_lambda).start()
+        self.render_thread = threading.Thread(target=render_lambda)
+        self.render_thread.start()
 
     def on_queue_clicked(self, button: Gtk.Button) -> None:
         render_task, render_engine_display = self.create_render_task()
@@ -337,13 +336,14 @@ class MainWindow(Gtk.Window):
 
         self.current_render_task.finished = True
         self.render_tasks_model[self.render_queue.index(self.current_render_task)][4] = True
-#        self.render_thread.join()
+        self.render_thread.join()
 
         for render_task in self.render_queue:
             if not render_task.finished:
                 self.current_render_task = render_task
                 render_lambda = lambda: self.render(self.current_render_task)
-                self.render_thread = threading.Thread(target=render_lambda).start()
+                self.render_thread = threading.Thread(target=render_lambda)
+                self.render_thread.start()
                 return
 
         self.render_button.set_sensitive(True)
