@@ -1,4 +1,5 @@
 IMAGE=orm-test
+CONTAINER=orm-test
 
 default: run
 
@@ -8,4 +9,5 @@ image:
 run: image
 	docker run --rm --net=host --env="DISPLAY" \
 		--volume="$$HOME/.Xauthority:/root/.Xauthority:rw" \
+		--name $(CONTAINER) \
 		$(IMAGE)
