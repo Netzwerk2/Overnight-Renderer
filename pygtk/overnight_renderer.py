@@ -22,6 +22,8 @@ class MainWindow(Gtk.Window):
     render_engine_combo_box = None
     render_device_combo_box = None
     render_samples_entry = None
+    resolution_x_entry = None
+    resolution_y_entry = None
     output_type_combo_box = None
     start_frame_entry = None
     end_frame_entry = None
@@ -66,6 +68,14 @@ class MainWindow(Gtk.Window):
         render_samples_label = create_label("Cycles Samples")
         self.render_samples_entry = create_entry(True)
         self.render_samples_entry.set_text("128")
+
+        resolution_x_label = create_label("Resolution X")
+        self.resolution_x_entry = create_entry(True)
+        self.resolution_x_entry.set_text("1920")
+
+        resolution_y_label = create_label("Resolution Y")
+        self.resolution_y_entry = create_entry(True)
+        self.resolution_y_entry.set_text("1080")
 
         output_type_label = create_label("Output Type")
         output_types = ["Animation", "Single Frame"]
@@ -139,24 +149,28 @@ class MainWindow(Gtk.Window):
         self.grid.attach(self.render_device_combo_box, 1, 2, 1, 1)
         self.grid.attach(render_samples_label, 0, 3, 1, 1)
         self.grid.attach(self.render_samples_entry, 1, 3, 1, 1)
-        self.grid.attach(output_type_label, 0, 4, 1, 1)
-        self.grid.attach(self.output_type_combo_box, 1, 4, 1, 1)
-        self.grid.attach(start_frame_label, 0, 5, 1, 1)
-        self.grid.attach(self.start_frame_entry, 1, 5, 1, 1)
-        self.grid.attach(end_frame_label, 0, 6, 1, 1)
-        self.grid.attach(self.end_frame_entry, 1, 6, 1, 1)
-        self.grid.attach(output_format_label, 0, 7, 1, 1)
-        self.grid.attach(self.output_format_combo_box, 1, 7, 1, 1)
-        self.grid.attach(output_file_label, 0, 8, 1, 1)
-        self.grid.attach(self.output_file_entry, 1, 8, 1, 1)
-        self.grid.attach(output_file_button, 2, 8, 1, 1)
-        self.grid.attach(python_expressions_label, 0, 9, 1, 1)
-        self.grid.attach(self.python_expressions_entry, 1, 9, 1, 1)
-        self.grid.attach(post_rendering_label, 0, 10, 1, 1)
-        self.grid.attach(self.post_rendering_combo_box, 1, 10, 1, 1)
-        self.grid.attach(self.render_button, 1, 11, 1, 1)
-        self.grid.attach(self.queue_button, 1, 12, 1, 1)
-        self.grid.attach(render_tasks_tree_view, 0, 13, 3, 1)
+        self.grid.attach(resolution_x_label, 0, 4, 1, 1)
+        self.grid.attach(self.resolution_x_entry, 1, 4, 1, 1)
+        self.grid.attach(resolution_y_label, 0, 5, 1, 1)
+        self.grid.attach(self.resolution_y_entry, 1, 5, 1, 1)
+        self.grid.attach(output_type_label, 0, 6, 1, 1)
+        self.grid.attach(self.output_type_combo_box, 1, 6, 1, 1)
+        self.grid.attach(start_frame_label, 0, 7, 1, 1)
+        self.grid.attach(self.start_frame_entry, 1, 7, 1, 1)
+        self.grid.attach(end_frame_label, 0, 8, 1, 1)
+        self.grid.attach(self.end_frame_entry, 1, 8, 1, 1)
+        self.grid.attach(output_format_label, 0, 9, 1, 1)
+        self.grid.attach(self.output_format_combo_box, 1, 9, 1, 1)
+        self.grid.attach(output_file_label, 0, 10, 1, 1)
+        self.grid.attach(self.output_file_entry, 1, 10, 1, 1)
+        self.grid.attach(output_file_button, 2, 10, 1, 1)
+        self.grid.attach(python_expressions_label, 0, 11, 1, 1)
+        self.grid.attach(self.python_expressions_entry, 1, 11, 1, 1)
+        self.grid.attach(post_rendering_label, 0, 12, 1, 1)
+        self.grid.attach(self.post_rendering_combo_box, 1, 12, 1, 1)
+        self.grid.attach(self.render_button, 1, 13, 1, 1)
+        self.grid.attach(self.queue_button, 1, 14, 1, 1)
+        self.grid.attach(render_tasks_tree_view, 0, 15, 3, 1)
 
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
@@ -241,6 +255,10 @@ class MainWindow(Gtk.Window):
 
         render_samples = int(self.render_samples_entry.get_text())
 
+        resolution_x = int(self.resolution_x_entry.get_text())
+
+        resolution_y = int(self.resolution_y_entry.get_text())
+
         output_type_iter = self.output_type_combo_box.get_active_iter()
         output_type_model = self.output_type_combo_box.get_model()
         output_type = output_type_model[output_type_iter][0]
@@ -259,8 +277,8 @@ class MainWindow(Gtk.Window):
 
         return RenderTask(
             blend_file, render_engine, render_device, render_samples,
-            output_type, start_frame, end_frame, output_format, output_file,
-            python_expressions, False
+            resolution_x, resolution_y, output_type, start_frame, end_frame,
+            output_format, output_file, python_expressions, False
         ), render_engine_display
 
     def add_render_task_to_tree_view(self, render_engine_display, render_task):
@@ -292,7 +310,9 @@ class MainWindow(Gtk.Window):
             os.system(
                 "blender -b {} -E {} -o {} -F {} -s {} -e {} "
                 "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
-                "bpy.context.scene.cycles.samples = {}; {}' "
+                "bpy.context.scene.cycles.samples = {}; "
+                "bpy.context.scene.render.resolution_x = {}; "
+                "bpy.context.scene.render.resolution_y = {}; {}' "
                 "-a"
                 .format(
                     os.path.basename(render_task.blend_file),
@@ -303,6 +323,8 @@ class MainWindow(Gtk.Window):
                     render_task.end_frame,
                     render_task.render_device,
                     render_task.render_samples,
+                    render_task.resolution_x,
+                    render_task.resolution_y,
                     render_task.python_expressions
                 )
             )
@@ -310,7 +332,9 @@ class MainWindow(Gtk.Window):
             os.system(
                 "blender -b {} -E {} -o {} -F {} "
                 "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
-                "bpy.context.scene.cycles.samples = {}; {}' "
+                "bpy.context.scene.cycles.samples = {}; "
+                "bpy.context.scene.render.resolution_x = {}; "
+                "bpy.context.scene.render.resolution_y = {}; {}' "
                 "-f {}"
                 .format(
                     os.path.basename(render_task.blend_file),
@@ -319,6 +343,8 @@ class MainWindow(Gtk.Window):
                     render_task.output_format,
                     render_task.render_device,
                     render_task.render_samples,
+                    render_task.resolution_x,
+                    render_task.resolution_y,
                     render_task.python_expressions,
                     render_task.start_frame
                 )
