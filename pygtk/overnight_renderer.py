@@ -24,6 +24,7 @@ class MainWindow(Gtk.Window):
     render_samples_entry = None
     resolution_x_entry = None
     resolution_y_entry = None
+    resolution_percentage_entry = None
     output_type_combo_box = None
     start_frame_entry = None
     end_frame_entry = None
@@ -76,6 +77,10 @@ class MainWindow(Gtk.Window):
         resolution_y_label = create_label("Resolution Y")
         self.resolution_y_entry = create_entry(True)
         self.resolution_y_entry.set_text("1080")
+
+        resolution_percentage_label = create_label("Resolution %")
+        self.resolution_percentage_entry = create_entry(True)
+        self.resolution_percentage_entry.set_text("100")
 
         output_type_label = create_label("Output Type")
         output_types = ["Animation", "Single Frame"]
@@ -153,24 +158,26 @@ class MainWindow(Gtk.Window):
         self.grid.attach(self.resolution_x_entry, 1, 4, 1, 1)
         self.grid.attach(resolution_y_label, 0, 5, 1, 1)
         self.grid.attach(self.resolution_y_entry, 1, 5, 1, 1)
-        self.grid.attach(output_type_label, 0, 6, 1, 1)
-        self.grid.attach(self.output_type_combo_box, 1, 6, 1, 1)
-        self.grid.attach(start_frame_label, 0, 7, 1, 1)
-        self.grid.attach(self.start_frame_entry, 1, 7, 1, 1)
-        self.grid.attach(end_frame_label, 0, 8, 1, 1)
-        self.grid.attach(self.end_frame_entry, 1, 8, 1, 1)
-        self.grid.attach(output_format_label, 0, 9, 1, 1)
-        self.grid.attach(self.output_format_combo_box, 1, 9, 1, 1)
-        self.grid.attach(output_file_label, 0, 10, 1, 1)
-        self.grid.attach(self.output_file_entry, 1, 10, 1, 1)
-        self.grid.attach(output_file_button, 2, 10, 1, 1)
-        self.grid.attach(python_expressions_label, 0, 11, 1, 1)
-        self.grid.attach(self.python_expressions_entry, 1, 11, 1, 1)
-        self.grid.attach(post_rendering_label, 0, 12, 1, 1)
-        self.grid.attach(self.post_rendering_combo_box, 1, 12, 1, 1)
-        self.grid.attach(self.render_button, 1, 13, 1, 1)
-        self.grid.attach(self.queue_button, 1, 14, 1, 1)
-        self.grid.attach(render_tasks_tree_view, 0, 15, 3, 1)
+        self.grid.attach(resolution_percentage_label, 0, 6, 1, 1)
+        self.grid.attach(self.resolution_percentage_entry, 1, 6, 1, 1)
+        self.grid.attach(output_type_label, 0, 7, 1, 1)
+        self.grid.attach(self.output_type_combo_box, 1, 7, 1, 1)
+        self.grid.attach(start_frame_label, 0, 8, 1, 1)
+        self.grid.attach(self.start_frame_entry, 1, 8, 1, 1)
+        self.grid.attach(end_frame_label, 0, 9, 1, 1)
+        self.grid.attach(self.end_frame_entry, 1, 9, 1, 1)
+        self.grid.attach(output_format_label, 0, 10, 1, 1)
+        self.grid.attach(self.output_format_combo_box, 1, 10, 1, 1)
+        self.grid.attach(output_file_label, 0, 11, 1, 1)
+        self.grid.attach(self.output_file_entry, 1, 11, 1, 1)
+        self.grid.attach(output_file_button, 2, 11, 1, 1)
+        self.grid.attach(python_expressions_label, 0, 12, 1, 1)
+        self.grid.attach(self.python_expressions_entry, 1, 12, 1, 1)
+        self.grid.attach(post_rendering_label, 0, 13, 1, 1)
+        self.grid.attach(self.post_rendering_combo_box, 1, 13, 1, 1)
+        self.grid.attach(self.render_button, 1, 14, 1, 1)
+        self.grid.attach(self.queue_button, 1, 15, 1, 1)
+        self.grid.attach(render_tasks_tree_view, 0, 16, 3, 1)
 
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
@@ -259,6 +266,8 @@ class MainWindow(Gtk.Window):
 
         resolution_y = int(self.resolution_y_entry.get_text())
 
+        resolution_percentage = int(self.resolution_percentage_entry.get_text())
+
         output_type_iter = self.output_type_combo_box.get_active_iter()
         output_type_model = self.output_type_combo_box.get_model()
         output_type = output_type_model[output_type_iter][0]
@@ -277,8 +286,9 @@ class MainWindow(Gtk.Window):
 
         return RenderTask(
             blend_file, render_engine, render_device, render_samples,
-            resolution_x, resolution_y, output_type, start_frame, end_frame,
-            output_format, output_file, python_expressions, False
+            resolution_x, resolution_y, resolution_percentage, output_type,
+            start_frame, end_frame, output_format, output_file,
+            python_expressions, False
         ), render_engine_display
 
     def add_render_task_to_tree_view(self, render_engine_display, render_task):
@@ -312,7 +322,8 @@ class MainWindow(Gtk.Window):
                 "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
                 "bpy.context.scene.cycles.samples = {}; "
                 "bpy.context.scene.render.resolution_x = {}; "
-                "bpy.context.scene.render.resolution_y = {}; {}' "
+                "bpy.context.scene.render.resolution_y = {}; "
+                "bpy.context.scene.render.resolution_percentage = {}; {}' "
                 "-a"
                 .format(
                     os.path.basename(render_task.blend_file),
@@ -325,6 +336,7 @@ class MainWindow(Gtk.Window):
                     render_task.render_samples,
                     render_task.resolution_x,
                     render_task.resolution_y,
+                    render_task.resolution_percentage,
                     render_task.python_expressions
                 )
             )
@@ -334,7 +346,8 @@ class MainWindow(Gtk.Window):
                 "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
                 "bpy.context.scene.cycles.samples = {}; "
                 "bpy.context.scene.render.resolution_x = {}; "
-                "bpy.context.scene.render.resolution_y = {}; {}' "
+                "bpy.context.scene.render.resolution_y = {}; "
+                "bpy.context.scene.render.resolution_percentage = {}; {}' "
                 "-f {}"
                 .format(
                     os.path.basename(render_task.blend_file),
@@ -345,6 +358,7 @@ class MainWindow(Gtk.Window):
                     render_task.render_samples,
                     render_task.resolution_x,
                     render_task.resolution_y,
+                    render_task.resolution_percentage,
                     render_task.python_expressions,
                     render_task.start_frame
                 )
