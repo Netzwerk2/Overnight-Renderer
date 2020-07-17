@@ -7,6 +7,7 @@ from gi.repository import Gtk, Notify, GLib, Gdk
 import os
 import time
 import threading
+import subprocess
 from typing import Tuple
 
 from widgets import create_label, create_entry, create_button, \
@@ -315,54 +316,55 @@ class MainWindow(Gtk.Window):
         self.render_queue.append(render_task)
 
     def render(self, render_task: RenderTask) -> None:
-        os.chdir(os.path.dirname(render_task.blend_file))
         if render_task.output_type == "Animation":
-            os.system(
-                "blender -b {} -E {} -o {} -F {} -s {} -e {} "
-                "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
-                "bpy.context.scene.cycles.samples = {}; "
-                "bpy.context.scene.render.resolution_x = {}; "
-                "bpy.context.scene.render.resolution_y = {}; "
-                "bpy.context.scene.render.resolution_percentage = {}; {}' "
-                "-a"
-                .format(
-                    os.path.basename(render_task.blend_file),
-                    render_task.render_engine,
-                    render_task.output_file,
-                    render_task.output_format,
-                    render_task.start_frame,
-                    render_task.end_frame,
-                    render_task.render_device,
-                    render_task.render_samples,
-                    render_task.resolution_x,
-                    render_task.resolution_y,
-                    render_task.resolution_percentage,
-                    render_task.python_expressions
-                )
+            subprocess.run(
+                [
+                    "blender",
+                    "-b", render_task.blend_file,
+                    "-E", render_task.render_engine,
+                    "-o", render_task.output_file,
+                    "-F", render_task.output_format,
+                    "-s", str(render_task.start_frame),
+                    "-e", str(render_task.end_frame),
+                    "--python-expr",
+                    "import bpy; bpy.context.scene.cycles.device = "
+                    f"'{render_task.render_device}'; "
+                    "bpy.context.scene.cycles.samples = "
+                    f"{render_task.render_samples}; "
+                    "bpy.context.scene.render.resolution_x = "
+                    f"{render_task.resolution_x}; "
+                    "bpy.context.scene.render.resolution_y = "
+                    f"{render_task.resolution_y}; "
+                    "bpy.context.scene.render.resolution_percentage = "
+                    f"{render_task.resolution_percentage}; "
+                    f"{render_task.python_expressions}",
+                    "-a"
+                ]
             )
         elif render_task.output_type == "Single Frame":
-            os.system(
-                "blender -b {} -E {} -o {} -F {} "
-                "--python-expr 'import bpy; bpy.context.scene.cycles.device = \"{}\"; "
-                "bpy.context.scene.cycles.samples = {}; "
-                "bpy.context.scene.render.resolution_x = {}; "
-                "bpy.context.scene.render.resolution_y = {}; "
-                "bpy.context.scene.render.resolution_percentage = {}; {}' "
-                "-f {}"
-                .format(
-                    os.path.basename(render_task.blend_file),
-                    render_task.render_engine,
-                    render_task.output_file,
-                    render_task.output_format,
-                    render_task.render_device,
-                    render_task.render_samples,
-                    render_task.resolution_x,
-                    render_task.resolution_y,
-                    render_task.resolution_percentage,
-                    render_task.python_expressions,
-                    render_task.start_frame
-                )
+            subprocess.run(
+                [
+                    "blender",
+                    "-b", render_task.blend_file,
+                    "-E", render_task.render_engine,
+                    "-o", render_task.output_file,
+                    "-F", render_task.output_format,
+                    "--python-expr",
+                    "import bpy; bpy.context.scene.cycles.device = "
+                    f"'{render_task.render_device}'; "
+                    "bpy.context.scene.cycles.samples = "
+                    f"{render_task.render_samples}; "
+                    "bpy.context.scene.render.resolution_x = "
+                    f"{render_task.resolution_x}; "
+                    "bpy.context.scene.render.resolution_y = "
+                    f"{render_task.resolution_y}; "
+                    "bpy.context.scene.render.resolution_percentage = "
+                    f"{render_task.resolution_percentage}; "
+                    f"{render_task.python_expressions}",
+                    "-f", str(render_task.start_frame)
+                ]
             )
+
         GLib.idle_add(self.post_rendering)
 
     def post_rendering(self) -> None:
