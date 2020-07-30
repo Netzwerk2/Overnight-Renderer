@@ -16,6 +16,10 @@ from widgets import create_label, create_entry, create_button, \
 
 from render_task import RenderTask
 
+from convert_input_to_argument import convert_render_engine, convert_output_format, convert_animation, \
+    convert_render_device, convert_render_samples, convert_resolution_x, convert_resolution_y, \
+    convert_resolution_percentage, convert_single_frame
+
 class MainWindow(Gtk.Window):
     grid = Gtk.Grid(column_spacing=12, row_spacing=12)
 
@@ -50,6 +54,8 @@ class MainWindow(Gtk.Window):
         self.create_content()
 
     def create_content(self) -> None:
+        number_entries_tooltip = "0 = Use from .blend file"
+
         blend_file_label = create_label("Path to .blend file")
         self.blend_file_entry = create_entry(False)
         blend_file_button = create_button("Browse")
@@ -57,6 +63,7 @@ class MainWindow(Gtk.Window):
 
         render_engine_label = create_label("Render Engine")
         engine_store = Gtk.ListStore(str, str)
+        engine_store.append([".blend file", ".blend file"])
         engine_store.append(["Eevee", "BLENDER_EEVEE"])
         engine_store.append(["Workbench", "BLENDER_WORKBENCH"])
         engine_store.append(["Cycles", "CYCLES"])
@@ -64,27 +71,27 @@ class MainWindow(Gtk.Window):
         self.render_engine_combo_box = create_combo_box(model=engine_store)
 
         render_device_label = create_label("Cycles Render Device")
-        render_devices = ["CPU", "GPU"]
+        render_devices = [".blend file", "CPU", "GPU"]
         self.render_device_combo_box = create_combo_box(labels=render_devices)
 
-        render_samples_label = create_label("Cycles Samples")
+        render_samples_label = create_label("Samples")
         self.render_samples_entry = create_entry(True)
-        self.render_samples_entry.set_text("128")
+        self.render_samples_entry.set_text("0")
 
         resolution_x_label = create_label("Resolution X")
         self.resolution_x_entry = create_entry(True)
-        self.resolution_x_entry.set_text("1920")
+        self.resolution_x_entry.set_text("0")
 
         resolution_y_label = create_label("Resolution Y")
         self.resolution_y_entry = create_entry(True)
-        self.resolution_y_entry.set_text("1080")
+        self.resolution_y_entry.set_text("0")
 
         resolution_percentage_label = create_label("Resolution %")
         self.resolution_percentage_entry = create_entry(True)
-        self.resolution_percentage_entry.set_text("100")
+        self.resolution_percentage_entry.set_text("0")
 
         output_type_label = create_label("Output Type")
-        output_types = ["Animation", "Single Frame"]
+        output_types = [".blend file", "Animation", "Single Frame"]
         self.output_type_combo_box = create_combo_box(labels=output_types)
         self.output_type_combo_box.connect("changed", self.on_output_type_changed)
 
@@ -98,6 +105,7 @@ class MainWindow(Gtk.Window):
 
         output_format_label = create_label("Output Format")
         format_store = Gtk.ListStore(str, str)
+        format_store.append([".blend file", ".blend file"])
         format_store.append(["BMP", "BMP"])
         format_store.append(["Iris", "IRIS"])
         format_store.append(["PNG", "PNG"])
@@ -316,54 +324,29 @@ class MainWindow(Gtk.Window):
         self.render_queue.append(render_task)
 
     def render(self, render_task: RenderTask) -> None:
-        if render_task.output_type == "Animation":
-            subprocess.run(
-                [
-                    "blender",
-                    "-b", render_task.blend_file,
-                    "-E", render_task.render_engine,
-                    "-o", render_task.output_file,
-                    "-F", render_task.output_format,
-                    "-s", str(render_task.start_frame),
-                    "-e", str(render_task.end_frame),
-                    "--python-expr",
-                    "import bpy; bpy.context.scene.cycles.device = "
-                    f"'{render_task.render_device}'; "
-                    "bpy.context.scene.cycles.samples = "
-                    f"{render_task.render_samples}; "
-                    "bpy.context.scene.render.resolution_x = "
-                    f"{render_task.resolution_x}; "
-                    "bpy.context.scene.render.resolution_y = "
-                    f"{render_task.resolution_y}; "
-                    "bpy.context.scene.render.resolution_percentage = "
-                    f"{render_task.resolution_percentage}; "
-                    f"{render_task.python_expressions}",
-                    "-a"
-                ]
-            )
-        elif render_task.output_type == "Single Frame":
-            subprocess.run(
-                [
-                    "blender",
-                    "-b", render_task.blend_file,
-                    "-E", render_task.render_engine,
-                    "-o", render_task.output_file,
-                    "-F", render_task.output_format,
-                    "--python-expr",
-                    "import bpy; bpy.context.scene.cycles.device = "
-                    f"'{render_task.render_device}'; "
-                    "bpy.context.scene.cycles.samples = "
-                    f"{render_task.render_samples}; "
-                    "bpy.context.scene.render.resolution_x = "
-                    f"{render_task.resolution_x}; "
-                    "bpy.context.scene.render.resolution_y = "
-                    f"{render_task.resolution_y}; "
-                    "bpy.context.scene.render.resolution_percentage = "
-                    f"{render_task.resolution_percentage}; "
-                    f"{render_task.python_expressions}",
-                    "-f", str(render_task.start_frame)
-                ]
-            )
+        subprocess.run(
+            [
+                "blender",
+                "-b", render_task.blend_file
+            ]
+            + convert_render_engine(render_task.render_engine)
+            + [
+                "-o", render_task.output_file,
+            ]
+            + convert_output_format(render_task.output_format)
+            + convert_animation(render_task.output_type, render_task.start_frame, render_task.end_frame)
+            + [
+                "--python-expr",
+                "import bpy; "
+                + convert_render_device(render_task.render_device)
+                + convert_render_samples(render_task.render_samples, render_task.render_engine)
+                + convert_resolution_x(render_task.resolution_x)
+                + convert_resolution_y(render_task.resolution_y)
+                + convert_resolution_percentage(render_task.resolution_percentage)
+                + f"{render_task.python_expressions}"
+            ]
+            + convert_single_frame(render_task.output_type, render_task.start_frame)
+        )
 
         GLib.idle_add(self.post_rendering)
 
@@ -409,7 +392,7 @@ class MainWindow(Gtk.Window):
             del self.render_queue[tree_view.get_selection().get_selected_rows()[1][0][0]]
             model, iter = tree_view.get_selection().get_selected()
             model.remove(iter)
-        
+
 
 main_window = MainWindow()
 main_window.connect("delete-event", Gtk.main_quit)
