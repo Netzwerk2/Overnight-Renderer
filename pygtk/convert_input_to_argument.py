@@ -1,12 +1,6 @@
 from typing import List
 
 
-def convert_render_engine(render_engine: str) -> List[str]:
-    if render_engine != ".blend file":
-        return ["-E", render_engine]
-    return []
-
-
 def convert_output_format(output_format: str) -> List[str]:
     if output_format != ".blend file":
         return ["-F", output_format]

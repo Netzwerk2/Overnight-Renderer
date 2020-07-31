@@ -16,7 +16,7 @@ from widgets import create_label, create_entry, create_button, \
 
 from render_task import RenderTask
 
-from convert_input_to_argument import convert_render_engine, convert_output_format, convert_animation, \
+from convert_input_to_argument import convert_output_format, convert_animation, \
     convert_render_device, convert_render_samples, convert_resolution_x, convert_resolution_y, \
     convert_resolution_percentage, convert_single_frame
 
@@ -63,7 +63,6 @@ class MainWindow(Gtk.Window):
 
         render_engine_label = create_label("Render Engine")
         engine_store = Gtk.ListStore(str, str)
-        engine_store.append([".blend file", ".blend file"])
         engine_store.append(["Eevee", "BLENDER_EEVEE"])
         engine_store.append(["Workbench", "BLENDER_WORKBENCH"])
         engine_store.append(["Cycles", "CYCLES"])
@@ -331,9 +330,9 @@ class MainWindow(Gtk.Window):
         subprocess.run(
             [
                 "blender",
-                "-b", render_task.blend_file
+                "-b", render_task.blend_file,
+                "-E", render_task.render_engine
             ]
-            + convert_render_engine(render_task.render_engine)
             + [
                 "-o", render_task.output_file,
             ]
