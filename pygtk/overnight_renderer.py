@@ -303,27 +303,21 @@ class MainWindow(Gtk.Window):
             python_expressions, False
         ), render_engine_display
 
-    def add_render_task_to_tree_view(self, render_engine_display, render_task):
-        if render_task.output_type == "Animation":
-            self.render_tasks_model.append([
-                os.path.basename(render_task.blend_file),
-                render_engine_display,
-                render_task.output_type + " ({}-{})".format(
-                    render_task.start_frame, render_task.end_frame
-                ),
-                render_task.output_file,
-                False
-            ])
-        elif render_task.output_type == "Single Frame":
-            self.render_tasks_model.append([
-                os.path.basename(render_task.blend_file),
-                render_engine_display,
-                render_task.output_type + " ({})".format(
-                    render_task.start_frame
-                ),
-                render_task.output_file,
-                False
-            ])
+    def add_render_task_to_tree_view(self, render_engine_display: str, render_task: RenderTask) -> None:
+        def frames_argument() -> str:
+            output_type = render_task.output_type
+            if output_type == "Animation":
+                return "{} ({}-{})".format(output_type, render_task.start_frame, render_task.end_frame)
+            elif output_type == "Single Frame":
+                return "{} ({})".format(output_type, render_task.start_frame)
+
+        self.render_tasks_model.append([
+            os.path.basename(render_task.blend_file),
+            render_engine_display,
+            frames_argument(),
+            render_task.output_file,
+            False
+        ])
         self.render_queue.append(render_task)
 
     def render(self, render_task: RenderTask) -> None:
