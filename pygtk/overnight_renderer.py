@@ -95,7 +95,7 @@ class MainWindow(Gtk.Window):
         self.resolution_percentage_entry.set_tooltip_text(number_entries_tooltip)
 
         output_type_label = create_label("Output Type")
-        output_types = [".blend file", "Animation", "Single Frame"]
+        output_types = ["Animation", "Single Frame"]
         self.output_type_combo_box = create_combo_box(labels=output_types)
         self.output_type_combo_box.connect("changed", self.on_output_type_changed)
 
