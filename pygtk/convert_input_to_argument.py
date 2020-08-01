@@ -21,16 +21,16 @@ def convert_single_frame(output_type: str, start_frame: int) -> List[str]:
 
 def convert_render_device(render_device: str) -> str:
     if render_device != ".blend file":
-        return f"bpy.context.scene.cycles.device = {render_device}; "
+        return f"bpy.context.scene.cycles.device = '{render_device}'; "
     return ""
 
 
-def convert_render_samples(render_samples: int, render_engine) -> str:
+def convert_render_samples(render_samples: int, render_engine: str) -> str:
     if render_samples != 0:
         if render_engine == "CYCLES":
-            return f"bpy.context.scene.cycles.samples = {render_samples}"
+            return f"bpy.context.scene.cycles.samples = {render_samples}; "
         elif render_engine == "BLENDER_EEVEE":
-            return f"bpy.context.scene.eevee.taa_render_samples = {render_samples}"
+            return f"bpy.context.scene.eevee.taa_render_samples = {render_samples}; "
     return ""
 
 
