@@ -377,11 +377,11 @@ class MainWindow(Gtk.Window):
         if post_rendering == "Suspend":
             time.sleep(30)
             print("Suspending...")
-            os.system("systemctl suspend")
+            subprocess.run(["systemctl suspend"])
         elif post_rendering == "Shutdown":
             time.sleep(30)
             print("Shutting down...")
-            os.system("poweroff")
+            subprocess.run(["poweroff"])
 
     def on_tree_view_key_pressed(self, tree_view: Gtk.TreeView, event: Gdk.EventKey) -> None:
         keyname = Gdk.keyval_name(event.keyval)
