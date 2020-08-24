@@ -45,7 +45,7 @@ class MainWindow(Gtk.Window):
     current_render_task = None
     render_thread = None
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(MainWindow, self).__init__()
         self.set_title("Blender Overnight Renderer")
         self.set_border_width(20)
@@ -201,10 +201,63 @@ class MainWindow(Gtk.Window):
 
         if response == Gtk.ResponseType.OK:
             self.blend_file_entry.set_text(file_chooser_dialog.get_filename())
+            render_task = self.set_properties_from_blend_file(
+                file_chooser_dialog.get_filename()
+            )
         elif response == Gtk.ResponseType.CANCEL:
             pass
 
         file_chooser_dialog.destroy()
+
+    def set_properties_from_blend_file(self, file_path: str) -> None:
+        with subprocess.Popen(
+            [
+                "blender",
+                "-b", file_path,
+                "--python-expr",
+                "import bpy; "
+                + "print('\\nREADY'); "
+                + "print(bpy.context.scene.render.engine); "
+                + "print(bpy.context.scene.cycles.device); "
+                + "print(bpy.context.scene.cycles.samples); "
+                + "print(bpy.context.scene.eevee.taa_render_samples); "
+                + "print(bpy.context.scene.render.resolution_x); "
+                + "print(bpy.context.scene.render.resolution_y); "
+                + "print(bpy.context.scene.render.resolution_percentage); "
+                + "print(bpy.context.scene.frame_start); "
+                + "print(bpy.context.scene.frame_end); "
+                + "print(bpy.context.scene.render.image_settings.file_format); "
+                + "print(bpy.context.scene.render.filepath); "
+            ],
+            stdout=subprocess.PIPE
+        ) as process:
+            output = process.stdout
+            properties = []
+            ready = False
+            for raw_line in output:
+                line = raw_line.strip().decode("utf-8")
+                if line == "READY":
+                    ready = True
+                    continue
+                if ready:
+                    properties.append(line)
+
+            if properties[0] == "BLENDER_EEVEE":
+                self.render_engine_combo_box.set_active(0)
+                self.render_samples_entry.set_text(properties[3])
+            elif properties[0] == "CYCLES":
+                self.render_engine_combo_box.set_active(2)
+                self.render_samples_entry.set_text(properties[2])
+            if properties[1] == "CPU":
+                self.render_device_combo_box.set_active(1)
+            elif properties[1] == "GPU":
+                self.render_device_combo_box.set_active(2)
+            self.resolution_x_entry.set_text(properties[4])
+            self.resolution_y_entry.set_text(properties[5])
+            self.resolution_percentage_entry.set_text(properties[6])
+            self.start_frame_entry.set_text(properties[7])
+            self.end_frame_entry.set_text(properties[8])
+            self.output_file_entry.set_text(properties[10])
 
     def on_output_type_changed(self, combo_box: Gtk.ComboBox) -> None:
         output_type_iter = combo_box.get_active_iter()
