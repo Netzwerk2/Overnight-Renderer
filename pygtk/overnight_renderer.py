@@ -126,12 +126,12 @@ class MainWindow(Gtk.Window):
         format_store.append(["FFmpeg video", "MPEG"])
         self.output_format_combo_box = create_combo_box(model=format_store)
 
-        output_file_label = create_label("Output path")
+        output_file_label = create_label("Output Path")
         self.output_file_entry = create_entry(False)
         output_file_button = create_button("Browse")
         output_file_button.connect("clicked", self.on_output_file_clicked)
 
-        python_expressions_label = create_label("Python expressions")
+        python_expressions_label = create_label("Python Expressions")
         self.python_expressions_entry = create_entry(False)
 
         post_rendering_label = create_label("After rendering is finished")
