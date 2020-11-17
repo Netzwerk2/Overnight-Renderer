@@ -2,7 +2,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Notify", "0.7")
-from gi.repository import Gtk, Notify, GLib, Gdk
+from gi.repository import Gtk, Notify, GLib, Gdk, Gio
 
 import os
 import time
@@ -25,7 +25,6 @@ from config import Config
 settings: Optional[Config] = None
 
 class MainWindow(Gtk.Window):
-    grid = Gtk.Grid(column_spacing=12, row_spacing=12)
 
     blend_file_entry = None
     render_engine_combo_box = None
@@ -68,6 +67,12 @@ class MainWindow(Gtk.Window):
         stack_switcher.set_halign(Gtk.Align.CENTER)
         stack_switcher.set_stack(stack)
 
+        settings_button = Gtk.Button()
+        settings_button.set_tooltip_text("Settings")
+        icon = Gio.ThemedIcon(name="emblem-system-symbolic")
+        image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
+        settings_button.add(image)
+
         vbox.pack_start(stack_switcher, True, False, 0)
         vbox.pack_start(stack, True, False, 0)
 
@@ -75,6 +80,7 @@ class MainWindow(Gtk.Window):
 
         header_bar = Gtk.HeaderBar(title="Overnight Renderer")
         header_bar.set_show_close_button(True)
+        header_bar.pack_end(settings_button)
 
         number_entries_tooltip = "0 = Use from .blend file"
 
@@ -176,45 +182,48 @@ class MainWindow(Gtk.Window):
         )
         render_tasks_tree_view.connect("key-press-event", self.on_tree_view_key_pressed)
 
-        stack.add_titled(self.grid, "render_settings", "Render Settings")
+        grid = Gtk.Grid(column_spacing=12, row_spacing=12)
+        grid.set_halign(Gtk.Align.CENTER)
+        grid.set_valign(Gtk.Align.CENTER)
+
+        stack.add_titled(grid, "render_settings", "Render Settings")
         stack.add_titled(render_tasks_tree_view, "queue", "Queue")
+
+        grid.attach(blend_file_label, 0, 0, 1, 1)
+        grid.attach(self.blend_file_entry, 1, 0, 1, 1)
+        grid.attach(blend_file_button, 2, 0, 1, 1)
+        grid.attach(render_engine_label, 0, 1, 1, 1)
+        grid.attach(self.render_engine_combo_box, 1, 1, 1, 1)
+        grid.attach(render_device_label, 0, 2, 1, 1)
+        grid.attach(self.render_device_combo_box, 1, 2, 1, 1)
+        grid.attach(render_samples_label, 0, 3, 1, 1)
+        grid.attach(self.render_samples_entry, 1, 3, 1, 1)
+        grid.attach(resolution_x_label, 0, 4, 1, 1)
+        grid.attach(self.resolution_x_entry, 1, 4, 1, 1)
+        grid.attach(resolution_y_label, 0, 5, 1, 1)
+        grid.attach(self.resolution_y_entry, 1, 5, 1, 1)
+        grid.attach(resolution_percentage_label, 0, 6, 1, 1)
+        grid.attach(self.resolution_percentage_entry, 1, 6, 1, 1)
+        grid.attach(output_type_label, 0, 7, 1, 1)
+        grid.attach(self.output_type_combo_box, 1, 7, 1, 1)
+        grid.attach(start_frame_label, 0, 8, 1, 1)
+        grid.attach(self.start_frame_entry, 1, 8, 1, 1)
+        grid.attach(end_frame_label, 0, 9, 1, 1)
+        grid.attach(self.end_frame_entry, 1, 9, 1, 1)
+        grid.attach(output_format_label, 0, 10, 1, 1)
+        grid.attach(self.output_format_combo_box, 1, 10, 1, 1)
+        grid.attach(output_file_label, 0, 11, 1, 1)
+        grid.attach(self.output_file_entry, 1, 11, 1, 1)
+        grid.attach(output_file_button, 2, 11, 1, 1)
+        grid.attach(python_expressions_label, 0, 12, 1, 1)
+        grid.attach(self.python_expressions_entry, 1, 12, 1, 1)
+        grid.attach(post_rendering_label, 0, 13, 1, 1)
+        grid.attach(self.post_rendering_combo_box, 1, 13, 1, 1)
+        grid.attach(self.render_button, 1, 14, 1, 1)
+        grid.attach(self.queue_button, 1, 15, 1, 1)
 
         self.set_titlebar(header_bar)
         self.add(vbox)
-        self.grid.set_halign(Gtk.Align.CENTER)
-        self.grid.set_valign(Gtk.Align.CENTER)
-        self.grid.attach(blend_file_label, 0, 0, 1, 1)
-        self.grid.attach(self.blend_file_entry, 1, 0, 1, 1)
-        self.grid.attach(blend_file_button, 2, 0, 1, 1)
-        self.grid.attach(render_engine_label, 0, 1, 1, 1)
-        self.grid.attach(self.render_engine_combo_box, 1, 1, 1, 1)
-        self.grid.attach(render_device_label, 0, 2, 1, 1)
-        self.grid.attach(self.render_device_combo_box, 1, 2, 1, 1)
-        self.grid.attach(render_samples_label, 0, 3, 1, 1)
-        self.grid.attach(self.render_samples_entry, 1, 3, 1, 1)
-        self.grid.attach(resolution_x_label, 0, 4, 1, 1)
-        self.grid.attach(self.resolution_x_entry, 1, 4, 1, 1)
-        self.grid.attach(resolution_y_label, 0, 5, 1, 1)
-        self.grid.attach(self.resolution_y_entry, 1, 5, 1, 1)
-        self.grid.attach(resolution_percentage_label, 0, 6, 1, 1)
-        self.grid.attach(self.resolution_percentage_entry, 1, 6, 1, 1)
-        self.grid.attach(output_type_label, 0, 7, 1, 1)
-        self.grid.attach(self.output_type_combo_box, 1, 7, 1, 1)
-        self.grid.attach(start_frame_label, 0, 8, 1, 1)
-        self.grid.attach(self.start_frame_entry, 1, 8, 1, 1)
-        self.grid.attach(end_frame_label, 0, 9, 1, 1)
-        self.grid.attach(self.end_frame_entry, 1, 9, 1, 1)
-        self.grid.attach(output_format_label, 0, 10, 1, 1)
-        self.grid.attach(self.output_format_combo_box, 1, 10, 1, 1)
-        self.grid.attach(output_file_label, 0, 11, 1, 1)
-        self.grid.attach(self.output_file_entry, 1, 11, 1, 1)
-        self.grid.attach(output_file_button, 2, 11, 1, 1)
-        self.grid.attach(python_expressions_label, 0, 12, 1, 1)
-        self.grid.attach(self.python_expressions_entry, 1, 12, 1, 1)
-        self.grid.attach(post_rendering_label, 0, 13, 1, 1)
-        self.grid.attach(self.post_rendering_combo_box, 1, 13, 1, 1)
-        self.grid.attach(self.render_button, 1, 14, 1, 1)
-        self.grid.attach(self.queue_button, 1, 15, 1, 1)
 
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
