@@ -1,7 +1,13 @@
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+
 import toml
 import subprocess
 
 from typing import Any, Dict
+from widgets import create_entry, create_label
 
 class Config:
     def __init__(self, settings: Dict[Any, Any]) -> None:
@@ -42,4 +48,63 @@ class Config:
         data = file.read()
         settings = toml.loads(data)
         return Config(settings)
+
+    def modify(self, settings) -> "Config":
+        self.settings.update(settings)
+        self.write()
+
+    def write(self) -> None:
+        file = open("settings.toml", "w")
+        file.write(toml.dumps(self.settings))
+        file.close()
+
+
+class ConfigDialog(Gtk.Dialog):
+    blender_config_entry = None
+    load_render_settings_check_button = None
+
+    def __init__(self, config) -> None:
+        super(ConfigDialog, self).__init__()
+        self.set_title("Settings")
+        self.set_border_width(20)
+        self.set_position(Gtk.WindowPosition.CENTER)
+
+        self.config = config
+
+        self.create_content()
+
+    def create_content(self) -> None:
+        header_bar = Gtk.HeaderBar(title="Settings")
+        header_bar.set_show_close_button(True)
+        header_bar.set_decoration_layout(":close")
+
+        blender_config_label = create_label("Blender Config Directory")
+        self.blender_config_entry = create_entry(False)
+        self.blender_config_entry.set_text(self.config.settings["blender_config"])
+
+        load_render_settings_label = create_label("Load render settings from selected .blend file")
+        self.load_render_settings_check_button = Gtk.CheckButton()
+        self.load_render_settings_check_button.set_active(self.config.settings["load_render_settings"])
+
+        grid = Gtk.Grid(column_spacing=12, row_spacing=12)
+        grid.set_halign(Gtk.Align.CENTER)
+        grid.set_valign(Gtk.Align.CENTER)
+
+        grid.attach(blender_config_label, 0, 0, 1, 1)
+        grid.attach(self.blender_config_entry, 1, 0, 1, 1)
+        grid.attach(load_render_settings_label, 0, 1, 1, 1)
+        grid.attach(self.load_render_settings_check_button, 1, 1, 1, 1)
+
+        self.set_titlebar(header_bar)
+        self.get_content_area().add(grid)
+
+        self.add_buttons(
+            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_APPLY, Gtk.ResponseType.APPLY
+        )
+
+        self.show_all()
+
+    def on_apply_clicked(self, button: Gtk.Button) -> None:
+        pass
 

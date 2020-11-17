@@ -17,15 +17,14 @@ from widgets import create_label, create_entry, create_file_chooser_dialog, \
 from render_task import RenderTask
 
 from convert_input_to_argument import convert_output_format, convert_animation, \
-    convert_render_device, convert_render_samples, convert_resolution_x, convert_resolution_y, \
-    convert_resolution_percentage, convert_single_frame
+    convert_render_device, convert_render_samples, convert_resolution_x, \
+    convert_resolution_y, convert_resolution_percentage, convert_single_frame
 
-from config import Config
+from config import Config, ConfigDialog
 
 settings: Optional[Config] = None
 
 class MainWindow(Gtk.Window):
-
     blend_file_entry = None
     render_engine_combo_box = None
     render_device_combo_box = None
@@ -50,7 +49,7 @@ class MainWindow(Gtk.Window):
 
     def __init__(self) -> None:
         super(MainWindow, self).__init__()
-        self.set_title("Blender Overnight Renderer")
+        self.set_title("Overnight Renderer")
         self.set_border_width(20)
         self.set_position(Gtk.WindowPosition.CENTER)
 
@@ -61,7 +60,7 @@ class MainWindow(Gtk.Window):
 
         stack = Gtk.Stack()
         stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
-        stack.set_transition_duration(200)
+        stack.set_transition_duration(150)
 
         stack_switcher = Gtk.StackSwitcher()
         stack_switcher.set_halign(Gtk.Align.CENTER)
@@ -69,9 +68,10 @@ class MainWindow(Gtk.Window):
 
         settings_button = Gtk.Button()
         settings_button.set_tooltip_text("Settings")
-        icon = Gio.ThemedIcon(name="emblem-system-symbolic")
-        image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
-        settings_button.add(image)
+        settings_button.connect("clicked", self.on_settings_clicked)
+        settings_icon = Gio.ThemedIcon(name="emblem-system-symbolic")
+        settings_image = Gtk.Image.new_from_gicon(settings_icon, Gtk.IconSize.BUTTON)
+        settings_button.add(settings_image)
 
         vbox.pack_start(stack_switcher, True, False, 0)
         vbox.pack_start(stack, True, False, 0)
@@ -225,6 +225,21 @@ class MainWindow(Gtk.Window):
         self.set_titlebar(header_bar)
         self.add(vbox)
 
+    def on_settings_clicked(self, button: Gtk.Button) -> None:
+        config_dialog = ConfigDialog(config)
+        response = config_dialog.run()
+
+        if response == Gtk.ResponseType.APPLY:
+            settings = config.settings
+            settings["blender_config"] = config_dialog.blender_config_entry.get_text()
+            settings["load_render_settings"] = config_dialog.load_render_settings_check_button.get_active()
+            config.modify(settings)
+        elif response == Gtk.ResponseType.CANCEL:
+            pass
+
+        config_dialog.destroy()
+
+
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
             self, Gtk.FileChooserAction.OPEN, Gtk.STOCK_OPEN
@@ -235,15 +250,16 @@ class MainWindow(Gtk.Window):
 
         if response == Gtk.ResponseType.OK:
             self.blend_file_entry.set_text(file_chooser_dialog.get_filename())
-            render_task = self.set_render_settings_from_blend_file(
-                file_chooser_dialog.get_filename()
-            )
+            if config.settings["load_render_settings"]:
+                render_task = self.load_render_settings(
+                    file_chooser_dialog.get_filename()
+                )
         elif response == Gtk.ResponseType.CANCEL:
             pass
 
         file_chooser_dialog.destroy()
 
-    def set_render_settings_from_blend_file(self, file_path: str) -> None:
+    def load_render_settings(self, file_path: str) -> None:
         with subprocess.Popen(
             [
                 "blender",
@@ -481,9 +497,7 @@ if __name__ == "__main__":
         config = Config.create_from_file("settings.toml")
     except IOError:
         config = Config.create_new()
-        file = open("settings.toml", "w")
-        file.write(toml.dumps(config.settings))
-        file.close()
+        config.write()
 
     main_window = MainWindow()
     main_window.connect("delete-event", Gtk.main_quit)

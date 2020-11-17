@@ -25,7 +25,7 @@ def create_entry(numbers_only: bool=True) -> Union[NumberEntry, Gtk.Entry]:
         entry = NumberEntry()
     else:
         entry = Gtk.Entry()
-    entry.set_width_chars(30)
+    entry.set_width_chars(42)
     return entry
 
 
