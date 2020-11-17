@@ -365,9 +365,9 @@ class MainWindow(Gtk.Window):
         def frames_argument() -> str:
             output_type = render_task.output_type
             if output_type == "Animation":
-                return "{} ({}-{})".format(output_type, render_task.start_frame, render_task.end_frame)
+                return f"{output_type} ({render_task.start_frame}-{render_task.end_frame})"
             elif output_type == "Single Frame":
-                return "{} ({})".format(output_type, render_task.start_frame)
+                return f"{output_type} ({render_task.start_frame})"
 
         self.render_tasks_model.append([
             os.path.basename(render_task.blend_file),
@@ -409,8 +409,7 @@ class MainWindow(Gtk.Window):
         print("Rendering complete!")
         Notify.init("Overnight Renderer")
         notification = Notify.Notification.new(
-            "Rendering {} finished"
-            .format(os.path.basename(self.current_render_task.blend_file))
+            f"Rendering {os.path.basename(self.current_render_task.blend_file)} finished"
         )
         notification.show()
 
