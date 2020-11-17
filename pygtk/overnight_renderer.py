@@ -233,6 +233,7 @@ class MainWindow(Gtk.Window):
             settings = config.settings
             settings["blender_config"] = config_dialog.blender_config_entry.get_text()
             settings["load_render_settings"] = config_dialog.load_render_settings_check_button.get_active()
+            settings["default_output_dir"] = config_dialog.output_dir_entry.get_text()
             config.modify(settings)
         elif response == Gtk.ResponseType.CANCEL:
             pass
@@ -250,6 +251,7 @@ class MainWindow(Gtk.Window):
 
         if response == Gtk.ResponseType.OK:
             self.blend_file_entry.set_text(file_chooser_dialog.get_filename())
+            self.output_file_entry.set_text(f"{config.settings['default_output_dir']}/Render")
             if config.settings["load_render_settings"]:
                 render_task = self.load_render_settings(
                     file_chooser_dialog.get_filename()
