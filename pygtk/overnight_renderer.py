@@ -20,9 +20,9 @@ from convert_input_to_argument import convert_output_format, convert_animation, 
     convert_render_device, convert_render_samples, convert_resolution_x, convert_resolution_y, \
     convert_resolution_percentage, convert_single_frame
 
-import config
+from config import Config
 
-settings: Optional[config.Config] = None
+settings: Optional[Config] = None
 
 class MainWindow(Gtk.Window):
     grid = Gtk.Grid(column_spacing=12, row_spacing=12)
@@ -469,12 +469,13 @@ class MainWindow(Gtk.Window):
 
 if __name__ == "__main__":
     try:
-        settings = config.create_from_file("settings.toml")
+        config = Config.create_from_file("settings.toml")
     except IOError:
-        settings = config.create_new()
+        config = Config.create_new()
         file = open("settings.toml", "w")
-        file.write(toml.dumps(settings.settings))
+        file.write(toml.dumps(config.settings))
         file.close()
+
     main_window = MainWindow()
     main_window.connect("delete-event", Gtk.main_quit)
     main_window.show_all()
