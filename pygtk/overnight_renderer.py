@@ -11,9 +11,8 @@ import subprocess
 import toml
 from typing import Optional, Tuple
 
-from widgets import create_label, create_entry, create_button, \
-    create_file_chooser_dialog, create_combo_box, create_check_button, \
-    create_tree_view
+from widgets import create_label, create_entry, create_file_chooser_dialog, \
+    create_combo_box, create_check_button, create_tree_view
 
 from render_task import RenderTask
 
@@ -59,11 +58,29 @@ class MainWindow(Gtk.Window):
         self.create_content()
 
     def create_content(self) -> None:
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+
+        stack = Gtk.Stack()
+        stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        stack.set_transition_duration(200)
+
+        stack_switcher = Gtk.StackSwitcher()
+        stack_switcher.set_halign(Gtk.Align.CENTER)
+        stack_switcher.set_stack(stack)
+
+        vbox.pack_start(stack_switcher, True, False, 0)
+        vbox.pack_start(stack, True, False, 0)
+
+        vbox.set_halign(Gtk.Align.CENTER)
+
+        header_bar = Gtk.HeaderBar(title="Overnight Renderer")
+        header_bar.set_show_close_button(True)
+
         number_entries_tooltip = "0 = Use from .blend file"
 
         blend_file_label = create_label("Path to .blend file")
         self.blend_file_entry = create_entry(False)
-        blend_file_button = create_button("Browse")
+        blend_file_button = Gtk.Button(label="Browse")
         blend_file_button.connect("clicked", self.on_blend_file_clicked)
 
         render_engine_label = create_label("Render Engine")
@@ -133,7 +150,7 @@ class MainWindow(Gtk.Window):
 
         output_file_label = create_label("Output Path")
         self.output_file_entry = create_entry(False)
-        output_file_button = create_button("Browse")
+        output_file_button = Gtk.Button(label="Browse")
         output_file_button.connect("clicked", self.on_output_file_clicked)
 
         python_expressions_label = create_label("Python Expressions")
@@ -145,10 +162,10 @@ class MainWindow(Gtk.Window):
             labels=post_rendering_options
         )
 
-        self.render_button = create_button("Render")
+        self.render_button = Gtk.Button(label="Render")
         self.render_button.connect("clicked", self.on_render_clicked)
 
-        self.queue_button = create_button("Queue")
+        self.queue_button = Gtk.Button(label="Queue")
         self.queue_button.connect("clicked", self.on_queue_clicked)
 
         columns = [
@@ -159,7 +176,11 @@ class MainWindow(Gtk.Window):
         )
         render_tasks_tree_view.connect("key-press-event", self.on_tree_view_key_pressed)
 
-        self.add(self.grid)
+        stack.add_titled(self.grid, "render_settings", "Render Settings")
+        stack.add_titled(render_tasks_tree_view, "queue", "Queue")
+
+        self.set_titlebar(header_bar)
+        self.add(vbox)
         self.grid.set_halign(Gtk.Align.CENTER)
         self.grid.set_valign(Gtk.Align.CENTER)
         self.grid.attach(blend_file_label, 0, 0, 1, 1)
@@ -194,7 +215,6 @@ class MainWindow(Gtk.Window):
         self.grid.attach(self.post_rendering_combo_box, 1, 13, 1, 1)
         self.grid.attach(self.render_button, 1, 14, 1, 1)
         self.grid.attach(self.queue_button, 1, 15, 1, 1)
-        self.grid.attach(render_tasks_tree_view, 0, 16, 3, 1)
 
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
@@ -206,7 +226,7 @@ class MainWindow(Gtk.Window):
 
         if response == Gtk.ResponseType.OK:
             self.blend_file_entry.set_text(file_chooser_dialog.get_filename())
-            render_task = self.set_properties_from_blend_file(
+            render_task = self.set_render_settings_from_blend_file(
                 file_chooser_dialog.get_filename()
             )
         elif response == Gtk.ResponseType.CANCEL:
@@ -214,7 +234,7 @@ class MainWindow(Gtk.Window):
 
         file_chooser_dialog.destroy()
 
-    def set_properties_from_blend_file(self, file_path: str) -> None:
+    def set_render_settings_from_blend_file(self, file_path: str) -> None:
         with subprocess.Popen(
             [
                 "blender",
@@ -237,7 +257,7 @@ class MainWindow(Gtk.Window):
             stdout=subprocess.PIPE
         ) as process:
             output = process.stdout
-            properties = []
+            render_settings = []
             ready = False
             for raw_line in output:
                 line = raw_line.strip().decode("utf-8")
@@ -245,24 +265,24 @@ class MainWindow(Gtk.Window):
                     ready = True
                     continue
                 if ready:
-                    properties.append(line)
+                    render_settings.append(line)
 
-            if properties[0] == "BLENDER_EEVEE":
+            if render_settings[0] == "BLENDER_EEVEE":
                 self.render_engine_combo_box.set_active(0)
-                self.render_samples_entry.set_text(properties[3])
-            elif properties[0] == "CYCLES":
+                self.render_samples_entry.set_text(render_settings[3])
+            elif render_settings[0] == "CYCLES":
                 self.render_engine_combo_box.set_active(2)
-                self.render_samples_entry.set_text(properties[2])
-            if properties[1] == "CPU":
+                self.render_samples_entry.set_text(render_settings[2])
+            if render_settings[1] == "CPU":
                 self.render_device_combo_box.set_active(1)
-            elif properties[1] == "GPU":
+            elif render_settings[1] == "GPU":
                 self.render_device_combo_box.set_active(2)
-            self.resolution_x_entry.set_text(properties[4])
-            self.resolution_y_entry.set_text(properties[5])
-            self.resolution_percentage_entry.set_text(properties[6])
-            self.start_frame_entry.set_text(properties[7])
-            self.end_frame_entry.set_text(properties[8])
-            self.output_file_entry.set_text(properties[10])
+            self.resolution_x_entry.set_text(render_settings[4])
+            self.resolution_y_entry.set_text(render_settings[5])
+            self.resolution_percentage_entry.set_text(render_settings[6])
+            self.start_frame_entry.set_text(render_settings[7])
+            self.end_frame_entry.set_text(render_settings[8])
+            self.output_file_entry.set_text(render_settings[10])
 
     def on_output_type_changed(self, combo_box: Gtk.ComboBox) -> None:
         output_type_iter = combo_box.get_active_iter()

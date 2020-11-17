@@ -29,11 +29,6 @@ def create_entry(numbers_only: bool=True) -> Union[NumberEntry, Gtk.Entry]:
     return entry
 
 
-def create_button(text: str) -> Gtk.Button:
-    button = Gtk.Button(label=text)
-    return button
-
-
 def create_file_chooser_dialog(self, action: Gtk.FileChooserAction, button: Gtk) -> Gtk.FileChooserDialog:
     file_chooser_dialog = Gtk.FileChooserDialog(
         "",
@@ -74,3 +69,4 @@ def create_tree_view(model: Gtk.ListStore, columns: List[str]) -> Gtk.TreeView:
         column_text = Gtk.TreeViewColumn(column, renderer_text, text=i)
         tree_view.append_column(column_text)
     return tree_view
+
