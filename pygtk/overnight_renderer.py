@@ -25,6 +25,7 @@ from config import Config, ConfigDialog
 settings: Optional[Config] = None
 
 class MainWindow(Gtk.Window):
+    stack = None
     blend_file_entry = None
     render_engine_combo_box = None
     render_device_combo_box = None
@@ -56,15 +57,13 @@ class MainWindow(Gtk.Window):
         self.create_content()
 
     def create_content(self) -> None:
-        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-
-        stack = Gtk.Stack()
-        stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
-        stack.set_transition_duration(150)
+        self.stack = Gtk.Stack()
+        self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        self.stack.set_transition_duration(150)
 
         stack_switcher = Gtk.StackSwitcher()
         stack_switcher.set_halign(Gtk.Align.CENTER)
-        stack_switcher.set_stack(stack)
+        stack_switcher.set_stack(self.stack)
 
         settings_button = Gtk.Button()
         settings_button.set_tooltip_text("Settings")
@@ -73,8 +72,9 @@ class MainWindow(Gtk.Window):
         settings_image = Gtk.Image.new_from_gicon(settings_icon, Gtk.IconSize.BUTTON)
         settings_button.add(settings_image)
 
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         vbox.pack_start(stack_switcher, True, False, 0)
-        vbox.pack_start(stack, True, False, 0)
+        vbox.pack_start(self.stack, True, False, 0)
 
         vbox.set_halign(Gtk.Align.CENTER)
 
@@ -186,8 +186,8 @@ class MainWindow(Gtk.Window):
         grid.set_halign(Gtk.Align.CENTER)
         grid.set_valign(Gtk.Align.CENTER)
 
-        stack.add_titled(grid, "render_settings", "Render Settings")
-        stack.add_titled(render_tasks_tree_view, "queue", "Queue")
+        self.stack.add_titled(grid, "render_settings", "Render Settings")
+        self.stack.add_titled(render_tasks_tree_view, "queue", "Queue")
 
         grid.attach(blend_file_label, 0, 0, 1, 1)
         grid.attach(self.blend_file_entry, 1, 0, 1, 1)
@@ -345,6 +345,7 @@ class MainWindow(Gtk.Window):
             if render_task.blend_file == "" or render_task.output_file == "":
                 return
             self.add_render_task_to_tree_view(render_engine_display, render_task)
+            self.stack.set_visible_child_name("queue")
             self.current_render_task = self.render_queue[0]
         else:
             for render_task in self.render_queue:
@@ -362,6 +363,7 @@ class MainWindow(Gtk.Window):
         if render_task.blend_file == "" or render_task.output_file == "":
             return
         self.add_render_task_to_tree_view(render_engine_display, render_task)
+        self.stack.set_visible_child_name("queue")
 
     def create_render_task(self) -> Tuple[RenderTask, str]:
         blend_file = self.blend_file_entry.get_text()
