@@ -26,6 +26,7 @@ settings: Optional[Config] = None
 
 class MainWindow(Gtk.Window):
     stack = None
+    blend_files_model = Gtk.ListStore(str, str)
     blend_file_entry = None
     render_engine_combo_box = None
     render_device_combo_box = None
@@ -72,15 +73,27 @@ class MainWindow(Gtk.Window):
         settings_image = Gtk.Image.new_from_gicon(settings_icon, Gtk.IconSize.BUTTON)
         settings_button.add(settings_image)
 
+        reload_button = Gtk.Button()
+        reload_button.set_tooltip_text("Reload .blend files")
+        reload_button.connect("clicked", self.on_reload_clicked)
+        reload_icon = Gio.ThemedIcon(name="view-refresh-symbolic")
+        reload_image = Gtk.Image.new_from_gicon(reload_icon, Gtk.IconSize.BUTTON)
+        reload_button.add(reload_image)
+
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        vbox.set_halign(Gtk.Align.CENTER)
         vbox.pack_start(stack_switcher, True, False, 0)
         vbox.pack_start(self.stack, True, False, 0)
 
-        vbox.set_halign(Gtk.Align.CENTER)
-
         header_bar = Gtk.HeaderBar(title="Overnight Renderer")
         header_bar.set_show_close_button(True)
+        header_bar.pack_start(reload_button)
         header_bar.pack_end(settings_button)
+
+        blend_files_tree_view = create_tree_view(
+            self.blend_files_model, ["File path", "Type"]
+        )
+        self.load_blend_files()
 
         number_entries_tooltip = "0 = Use from .blend file"
 
@@ -174,9 +187,7 @@ class MainWindow(Gtk.Window):
         self.queue_button = Gtk.Button(label="Queue")
         self.queue_button.connect("clicked", self.on_queue_clicked)
 
-        columns = [
-            "File", "Engine", "Type", "Output", "Finished"
-        ]
+        columns = ["File", "Engine", "Type", "Output", "Finished"]
         render_tasks_tree_view = create_tree_view(
             self.render_tasks_model, columns
         )
@@ -186,6 +197,7 @@ class MainWindow(Gtk.Window):
         grid.set_halign(Gtk.Align.CENTER)
         grid.set_valign(Gtk.Align.CENTER)
 
+        self.stack.add_titled(blend_files_tree_view, "blend_files", "Blend Files")
         self.stack.add_titled(grid, "render_settings", "Render Settings")
         self.stack.add_titled(render_tasks_tree_view, "queue", "Queue")
 
@@ -240,6 +252,19 @@ class MainWindow(Gtk.Window):
 
         config_dialog.destroy()
 
+    def on_reload_clicked(self, button: Gtk.Button) -> None:
+        self.load_blend_files()
+
+    def load_blend_files(self) -> None:
+        file = open(f"{config.settings['blender_config']}/recent-files.txt", "r")
+        lines = file.readlines()
+        file.close()
+
+        self.blend_files_model.clear()
+
+        for line in lines:
+            path = line.strip()
+            self.blend_files_model.append([path, "Recent"])
 
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
