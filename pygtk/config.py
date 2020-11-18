@@ -3,6 +3,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
+import os
 import toml
 import subprocess
 
@@ -38,8 +39,9 @@ class Config:
 
         settings = {
             "blender_config": config_dir,
-            "load_render_settings": True,
-            "default_output_dir": ""
+            "default_blender_dir": "",
+            "default_output_dir": "",
+            "load_render_settings": True
         }
 
         return Config(settings)
@@ -62,6 +64,7 @@ class Config:
 
 class ConfigDialog(Gtk.Dialog):
     blender_config_entry = None
+    default_dir_entry = None
     output_dir_entry = None
     load_render_settings_check_button = None
 
@@ -84,6 +87,10 @@ class ConfigDialog(Gtk.Dialog):
         self.blender_config_entry = create_entry(False)
         self.blender_config_entry.set_text(self.config.settings["blender_config"])
 
+        default_dir_label = create_label("Default Blender Directory")
+        self.default_dir_entry = create_entry(False)
+        self.default_dir_entry.set_text(self.config.settings["default_blender_dir"])
+
         output_dir_label = create_label("Default Output Directory")
         self.output_dir_entry = create_entry(False)
         self.output_dir_entry.set_text(self.config.settings["default_output_dir"])
@@ -98,10 +105,12 @@ class ConfigDialog(Gtk.Dialog):
 
         grid.attach(blender_config_label, 0, 0, 1, 1)
         grid.attach(self.blender_config_entry, 1, 0, 1, 1)
-        grid.attach(output_dir_label, 0, 1, 1, 1)
-        grid.attach(self.output_dir_entry, 1, 1, 1, 1)
-        grid.attach(load_render_settings_label, 0, 2, 1, 1)
-        grid.attach(self.load_render_settings_check_button, 1, 2, 1, 1)
+        grid.attach(default_dir_label, 0, 1, 1, 1)
+        grid.attach(self.default_dir_entry, 1, 1, 1, 1)
+        grid.attach(output_dir_label, 0, 2, 1, 1)
+        grid.attach(self.output_dir_entry, 1, 2, 1, 1)
+        grid.attach(load_render_settings_label, 0, 3, 1, 1)
+        grid.attach(self.load_render_settings_check_button, 1, 3, 1, 1)
 
         self.set_titlebar(header_bar)
         self.get_content_area().add(grid)

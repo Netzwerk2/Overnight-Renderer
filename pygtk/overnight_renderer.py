@@ -5,6 +5,7 @@ gi.require_version("Notify", "0.7")
 from gi.repository import Gtk, Notify, GLib, Gdk, Gio
 
 import os
+import glob
 import time
 import threading
 import subprocess
@@ -21,6 +22,8 @@ from convert_input_to_argument import convert_output_format, convert_animation, 
     convert_resolution_y, convert_resolution_percentage, convert_single_frame
 
 from config import Config, ConfigDialog
+
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 settings: Optional[Config] = None
 
@@ -91,9 +94,13 @@ class MainWindow(Gtk.Window):
         header_bar.pack_end(settings_button)
 
         blend_files_tree_view = create_tree_view(
-            self.blend_files_model, ["File path", "Type"]
+            self.blend_files_model, ["File", "Type"]
         )
         self.load_blend_files()
+
+        blend_files_scrolled = Gtk.ScrolledWindow()
+        blend_files_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        blend_files_scrolled.add(blend_files_tree_view)
 
         number_entries_tooltip = "0 = Use from .blend file"
 
@@ -197,7 +204,7 @@ class MainWindow(Gtk.Window):
         grid.set_halign(Gtk.Align.CENTER)
         grid.set_valign(Gtk.Align.CENTER)
 
-        self.stack.add_titled(blend_files_tree_view, "blend_files", "Blend Files")
+        self.stack.add_titled(blend_files_scrolled, "blend_files", "Blend Files")
         self.stack.add_titled(grid, "render_settings", "Render Settings")
         self.stack.add_titled(render_tasks_tree_view, "queue", "Queue")
 
@@ -246,6 +253,7 @@ class MainWindow(Gtk.Window):
             settings["blender_config"] = config_dialog.blender_config_entry.get_text()
             settings["load_render_settings"] = config_dialog.load_render_settings_check_button.get_active()
             settings["default_output_dir"] = config_dialog.output_dir_entry.get_text()
+            settings["default_blender_dir"] = config_dialog.default_dir_entry.get_text()
             config.modify(settings)
         elif response == Gtk.ResponseType.CANCEL:
             pass
@@ -265,6 +273,12 @@ class MainWindow(Gtk.Window):
         for line in lines:
             path = line.strip()
             self.blend_files_model.append([path, "Recent"])
+
+        for dir,_,_ in os.walk(config.settings["default_blender_dir"]):
+            files = glob.glob(os.path.join(dir, "*.blend"))
+            if files:
+                for file in files:
+                    self.blend_files_model.append([file, "Default Directory"])
 
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
