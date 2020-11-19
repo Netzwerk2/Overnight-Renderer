@@ -96,6 +96,7 @@ class MainWindow(Gtk.Window):
         blend_files_tree_view = create_tree_view(
             self.blend_files_model, ["File", "Type"]
         )
+        blend_files_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
         self.load_blend_files()
 
         blend_files_scrolled = Gtk.ScrolledWindow()
@@ -198,7 +199,8 @@ class MainWindow(Gtk.Window):
         render_tasks_tree_view = create_tree_view(
             self.render_tasks_model, columns
         )
-        render_tasks_tree_view.connect("key-press-event", self.on_tree_view_key_pressed)
+        render_tasks_tree_view.connect("key-press-event", self.on_tree_view_key_pressed) 
+        render_tasks_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
 
         grid = Gtk.Grid(column_spacing=12, row_spacing=12)
         grid.set_halign(Gtk.Align.CENTER)
@@ -290,11 +292,12 @@ class MainWindow(Gtk.Window):
 
         if response == Gtk.ResponseType.OK:
             self.blend_file_entry.set_text(file_chooser_dialog.get_filename())
-            self.output_file_entry.set_text(f"{config.settings['default_output_dir']}/Render")
             if config.settings["load_render_settings"]:
-                render_task = self.load_render_settings(
+                self.load_render_settings(
                     file_chooser_dialog.get_filename()
                 )
+            if self.output_file_entry.get_text() == "/tmp/" or self.output_file_entry.get_text() == "":
+                self.output_file_entry.set_text(f"{config.settings['default_output_dir']}Render")
         elif response == Gtk.ResponseType.CANCEL:
             pass
 
