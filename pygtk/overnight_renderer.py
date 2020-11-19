@@ -29,7 +29,7 @@ settings: Optional[Config] = None
 
 class MainWindow(Gtk.Window):
     stack = None
-    blend_files_model = Gtk.ListStore(str, str)
+    blend_files_model = Gtk.ListStore(str, str, bool)
     blend_file_entry = None
     render_engine_combo_box = None
     render_device_combo_box = None
@@ -97,6 +97,7 @@ class MainWindow(Gtk.Window):
             self.blend_files_model, ["File", "Type"]
         )
         blend_files_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
+        blend_files_tree_view.set_row_separator_func(self.row_separator_func, None)
         self.load_blend_files()
 
         blend_files_scrolled = Gtk.ScrolledWindow()
@@ -246,6 +247,9 @@ class MainWindow(Gtk.Window):
         self.set_titlebar(header_bar)
         self.add(vbox)
 
+    def row_separator_func(self, tree_model: Gtk.TreeModel, tree_iter: Gtk.TreeIter, data) -> bool:
+        return tree_model[tree_iter][2]
+
     def on_settings_clicked(self, button: Gtk.Button) -> None:
         config_dialog = ConfigDialog(config)
         response = config_dialog.run()
@@ -274,13 +278,15 @@ class MainWindow(Gtk.Window):
 
         for line in lines:
             path = line.strip()
-            self.blend_files_model.append([path, "Recent"])
+            self.blend_files_model.append([path, "Recent", False])
+
+        self.blend_files_model.append(["", "SEPARATOR", True])
 
         for dir,_,_ in os.walk(config.settings["default_blender_dir"]):
             files = glob.glob(os.path.join(dir, "*.blend"))
             if files:
                 for file in files:
-                    self.blend_files_model.append([file, "Default Directory"])
+                    self.blend_files_model.append([file, "Default Directory", False])
 
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
