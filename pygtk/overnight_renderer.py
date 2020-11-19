@@ -98,6 +98,7 @@ class MainWindow(Gtk.Window):
         )
         blend_files_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
         blend_files_tree_view.set_row_separator_func(self.row_separator_func, None)
+        blend_files_tree_view.connect("button-press-event", self.on_blend_cell_clicked)
         self.load_blend_files()
 
         blend_files_scrolled = Gtk.ScrolledWindow()
@@ -288,6 +289,14 @@ class MainWindow(Gtk.Window):
                 for file in files:
                     self.blend_files_model.append([file, "Default Directory", False])
 
+    def on_blend_cell_clicked(self, tree_view: Gtk.TreeView, event: Gdk.EventButton) -> None:
+        if event.button == 1 and event.type == Gdk.EventType._2BUTTON_PRESS:
+            selection = tree_view.get_selection()
+            model, tree_iter = selection.get_selected()
+            path = model[tree_iter][0]
+            self.set_file_and_output_dir(path)
+            self.stack.set_visible_child_name("render_settings")
+
     def on_blend_file_clicked(self, button: Gtk.Button) -> None:
         file_chooser_dialog = create_file_chooser_dialog(
             self, Gtk.FileChooserAction.OPEN, Gtk.STOCK_OPEN
@@ -297,17 +306,18 @@ class MainWindow(Gtk.Window):
         response = file_chooser_dialog.run()
 
         if response == Gtk.ResponseType.OK:
-            self.blend_file_entry.set_text(file_chooser_dialog.get_filename())
-            if config.settings["load_render_settings"]:
-                self.load_render_settings(
-                    file_chooser_dialog.get_filename()
-                )
-            if self.output_file_entry.get_text() == "/tmp/" or self.output_file_entry.get_text() == "":
-                self.output_file_entry.set_text(f"{config.settings['default_output_dir']}Render")
+            self.set_file_and_output_dir(file_chooser_dialog.get_filename())
         elif response == Gtk.ResponseType.CANCEL:
             pass
 
         file_chooser_dialog.destroy()
+
+    def set_file_and_output_dir(self, path: str) -> None:
+        self.blend_file_entry.set_text(path)
+        if config.settings["load_render_settings"]:
+            self.load_render_settings(path)
+        if self.output_file_entry.get_text() == "/tmp/" or self.output_file_entry.get_text() == "":
+            self.output_file_entry.set_text(f"{config.settings['default_output_dir']}Render")
 
     def load_render_settings(self, file_path: str) -> None:
         with subprocess.Popen(
