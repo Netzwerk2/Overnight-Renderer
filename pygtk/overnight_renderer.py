@@ -13,7 +13,8 @@ import toml
 from typing import Optional, Tuple
 
 from widgets import create_label, create_entry, create_file_chooser_dialog, \
-    create_combo_box, create_check_button, create_tree_view
+    create_combo_box, create_check_button, create_tree_view, \
+    create_file_chooser_button
 
 from render_task import RenderTask
 
@@ -30,7 +31,7 @@ settings: Optional[Config] = None
 class MainWindow(Gtk.Window):
     stack = None
     blend_files_model = Gtk.ListStore(str, str, bool)
-    blend_file_entry = None
+    blend_file_chooser_button = None
     render_engine_combo_box = None
     render_device_combo_box = None
     render_samples_entry = None
@@ -41,7 +42,8 @@ class MainWindow(Gtk.Window):
     start_frame_entry = None
     end_frame_entry = None
     output_format_combo_box = None
-    output_file_entry = None
+    output_name_entry = None
+    output_file_chooser_button = None
     python_expressions_entry = None
     post_rendering_combo_box = None
     render_button = None
@@ -108,9 +110,10 @@ class MainWindow(Gtk.Window):
         number_entries_tooltip = "0 = Use from .blend file"
 
         blend_file_label = create_label("Path to .blend file")
-        self.blend_file_entry = create_entry(False)
-        blend_file_button = Gtk.Button(label="Browse")
-        blend_file_button.connect("clicked", self.on_blend_file_clicked)
+        self.blend_file_chooser_button = create_file_chooser_button(
+            self, "Select .blend file", Gtk.FileChooserAction.OPEN, Gtk.STOCK_OPEN, True
+        )
+        self.blend_file_chooser_button.connect("file-set", self.on_blend_file_clicked)
 
         render_engine_label = create_label("Render Engine")
         engine_store = Gtk.ListStore(str, str)
@@ -177,10 +180,14 @@ class MainWindow(Gtk.Window):
         format_store.append(["FFmpeg video", "MPEG"])
         self.output_format_combo_box = create_combo_box(model=format_store)
 
+        output_name_label = create_label("Output Name")
+        self.output_name_entry = create_entry(False)
+        self.output_name_entry.set_text("Render")
+
         output_file_label = create_label("Output Path")
-        self.output_file_entry = create_entry(False)
-        output_file_button = Gtk.Button(label="Browse")
-        output_file_button.connect("clicked", self.on_output_file_clicked)
+        self.output_file_chooser_button = create_file_chooser_button(
+            self, "Select output file directory", Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
+        )
 
         python_expressions_label = create_label("Python Expressions")
         self.python_expressions_entry = create_entry(False)
@@ -201,7 +208,7 @@ class MainWindow(Gtk.Window):
         render_tasks_tree_view = create_tree_view(
             self.render_tasks_model, columns
         )
-        render_tasks_tree_view.connect("key-press-event", self.on_tree_view_key_pressed) 
+        render_tasks_tree_view.connect("key-press-event", self.on_tree_view_key_pressed)
         render_tasks_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
 
         grid = Gtk.Grid(column_spacing=12, row_spacing=12)
@@ -213,8 +220,7 @@ class MainWindow(Gtk.Window):
         self.stack.add_titled(render_tasks_tree_view, "queue", "Queue")
 
         grid.attach(blend_file_label, 0, 0, 1, 1)
-        grid.attach(self.blend_file_entry, 1, 0, 1, 1)
-        grid.attach(blend_file_button, 2, 0, 1, 1)
+        grid.attach(self.blend_file_chooser_button, 1, 0, 1, 1)
         grid.attach(render_engine_label, 0, 1, 1, 1)
         grid.attach(self.render_engine_combo_box, 1, 1, 1, 1)
         grid.attach(render_device_label, 0, 2, 1, 1)
@@ -235,15 +241,16 @@ class MainWindow(Gtk.Window):
         grid.attach(self.end_frame_entry, 1, 9, 1, 1)
         grid.attach(output_format_label, 0, 10, 1, 1)
         grid.attach(self.output_format_combo_box, 1, 10, 1, 1)
-        grid.attach(output_file_label, 0, 11, 1, 1)
-        grid.attach(self.output_file_entry, 1, 11, 1, 1)
-        grid.attach(output_file_button, 2, 11, 1, 1)
-        grid.attach(python_expressions_label, 0, 12, 1, 1)
-        grid.attach(self.python_expressions_entry, 1, 12, 1, 1)
-        grid.attach(post_rendering_label, 0, 13, 1, 1)
-        grid.attach(self.post_rendering_combo_box, 1, 13, 1, 1)
-        grid.attach(self.render_button, 1, 14, 1, 1)
-        grid.attach(self.queue_button, 1, 15, 1, 1)
+        grid.attach(output_name_label, 0, 11, 1, 1)
+        grid.attach(self.output_name_entry, 1, 11, 1, 1)
+        grid.attach(output_file_label, 0, 12, 1, 1)
+        grid.attach(self.output_file_chooser_button, 1, 12, 1, 1)
+        grid.attach(python_expressions_label, 0, 13, 1, 1)
+        grid.attach(self.python_expressions_entry, 1, 13, 1, 1)
+        grid.attach(post_rendering_label, 0, 14, 1, 1)
+        grid.attach(self.post_rendering_combo_box, 1, 14, 1, 1)
+        grid.attach(self.render_button, 1, 15, 1, 1)
+        grid.attach(self.queue_button, 1, 16, 1, 1)
 
         self.set_titlebar(header_bar)
         self.add(vbox)
@@ -294,30 +301,19 @@ class MainWindow(Gtk.Window):
             selection = tree_view.get_selection()
             model, tree_iter = selection.get_selected()
             path = model[tree_iter][0]
-            self.set_file_and_output_dir(path)
+            self.blend_file_chooser_button.set_filename(path)
+            self.set_output_dir(path)
             self.stack.set_visible_child_name("render_settings")
 
-    def on_blend_file_clicked(self, button: Gtk.Button) -> None:
-        file_chooser_dialog = create_file_chooser_dialog(
-            self, Gtk.FileChooserAction.OPEN, Gtk.STOCK_OPEN
-        )
-        self.add_blend_filters(file_chooser_dialog)
+    def on_blend_file_clicked(self, button: Gtk.FileChooserButton) -> None:
+        self.set_output_dir(button.get_filename())
 
-        response = file_chooser_dialog.run()
-
-        if response == Gtk.ResponseType.OK:
-            self.set_file_and_output_dir(file_chooser_dialog.get_filename())
-        elif response == Gtk.ResponseType.CANCEL:
-            pass
-
-        file_chooser_dialog.destroy()
-
-    def set_file_and_output_dir(self, path: str) -> None:
-        self.blend_file_entry.set_text(path)
+    def set_output_dir(self, path: str) -> None:
+        print(self.output_file_chooser_button.get_filename())
         if config.settings["load_render_settings"]:
             self.load_render_settings(path)
-        if self.output_file_entry.get_text() == "/tmp/" or self.output_file_entry.get_text() == "":
-            self.output_file_entry.set_text(f"{config.settings['default_output_dir']}Render")
+        if self.output_file_chooser_button.get_filename() == "/tmp" or self.output_file_chooser_button.get_filename() is None:
+            self.output_file_chooser_button.set_filename(f"{config.settings['default_output_dir']}")
 
     def load_render_settings(self, file_path: str) -> None:
         with subprocess.Popen(
@@ -367,7 +363,7 @@ class MainWindow(Gtk.Window):
             self.resolution_percentage_entry.set_text(render_settings[6])
             self.start_frame_entry.set_text(render_settings[7])
             self.end_frame_entry.set_text(render_settings[8])
-            self.output_file_entry.set_text(render_settings[10])
+            self.output_file_chooser_button.set_filename(os.path.dirname(render_settings[10]))
 
     def on_output_type_changed(self, combo_box: Gtk.ComboBox) -> None:
         output_type_iter = combo_box.get_active_iter()
@@ -378,26 +374,6 @@ class MainWindow(Gtk.Window):
             self.end_frame_entry.set_sensitive(True)
         elif output_type == "Single Frame":
             self.end_frame_entry.set_sensitive(False)
-
-    def on_output_file_clicked(self, button: Gtk.Button) -> None:
-        file_chooser_dialog = create_file_chooser_dialog(
-            self, Gtk.FileChooserAction.SAVE, Gtk.STOCK_SAVE
-        )
-        file_chooser_dialog.set_current_name("Render")
-
-        response = file_chooser_dialog.run()
-
-        if response == Gtk.ResponseType.OK:
-            self.output_file_entry.set_text(file_chooser_dialog.get_filename())
-
-        file_chooser_dialog.destroy()
-
-    def add_blend_filters(self, dialog: Gtk.FileChooserDialog) -> None:
-        filter_blend = Gtk.FileFilter()
-        filter_blend.set_name(".blend files")
-        filter_blend.add_pattern("*.blend")
-        filter_blend.add_pattern("*.blend1")
-        dialog.add_filter(filter_blend)
 
     def on_render_clicked(self, button: Gtk.Button) -> None:
         if len(self.render_queue) == 0:
@@ -426,7 +402,7 @@ class MainWindow(Gtk.Window):
         self.stack.set_visible_child_name("queue")
 
     def create_render_task(self) -> Tuple[RenderTask, str]:
-        blend_file = self.blend_file_entry.get_text()
+        blend_file = self.blend_file_chooser_button.get_filename()
 
         render_engine_iter = self.render_engine_combo_box.get_active_iter()
         render_engine_model = self.render_engine_combo_box.get_model()
@@ -457,7 +433,7 @@ class MainWindow(Gtk.Window):
         output_format_model = self.output_format_combo_box.get_model()
         output_format = output_format_model[output_format_iter][1]
 
-        output_file = self.output_file_entry.get_text()
+        output_file = self.output_file_chooser_button.get_filename() + self.output_name_entry.get_text()
 
         python_expressions = self.python_expressions_entry.get_text()
 

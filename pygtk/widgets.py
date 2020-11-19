@@ -29,9 +29,16 @@ def create_entry(numbers_only: bool=True) -> Union[NumberEntry, Gtk.Entry]:
     return entry
 
 
-def create_file_chooser_dialog(self, action: Gtk.FileChooserAction, button: Gtk) -> Gtk.FileChooserDialog:
+def create_file_chooser_button(self, dialog_text, action: Gtk.FileChooserAction, button: Gtk.ButtonsType, filter_blend: bool) -> None:
+    file_chooser_dialog = create_file_chooser_dialog(self, dialog_text, action, button)
+    if filter_blend:
+        add_blend_filters(file_chooser_dialog)
+    return Gtk.FileChooserButton(dialog=file_chooser_dialog)
+
+
+def create_file_chooser_dialog(self, title: str, action: Gtk.FileChooserAction, button: Gtk.ButtonsType) -> Gtk.FileChooserDialog:
     file_chooser_dialog = Gtk.FileChooserDialog(
-        "",
+        title,
         self,
         action,
         (
@@ -42,6 +49,14 @@ def create_file_chooser_dialog(self, action: Gtk.FileChooserAction, button: Gtk)
         )
     )
     return file_chooser_dialog
+
+
+def add_blend_filters(dialog: Gtk.FileChooserDialog) -> None:
+    filter_blend = Gtk.FileFilter()
+    filter_blend.set_name(".blend files")
+    filter_blend.add_pattern("*.blend")
+    filter_blend.add_pattern("*.blend1")
+    dialog.add_filter(filter_blend)
 
 
 def create_combo_box(model: Gtk.ListStore=None, labels: List[str]=None) -> Gtk.ComboBox:
