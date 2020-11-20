@@ -30,7 +30,8 @@ settings: Optional[Config] = None
 
 class MainWindow(Gtk.Window):
     stack = None
-    blend_files_model = Gtk.ListStore(str, str, bool)
+    blend_files_tree_view = None
+    blend_files_model = Gtk.TreeStore(str)
     blend_file_chooser_button = None
     render_engine_combo_box = None
     render_device_combo_box = None
@@ -95,17 +96,14 @@ class MainWindow(Gtk.Window):
         header_bar.pack_start(reload_button)
         header_bar.pack_end(settings_button)
 
-        blend_files_tree_view = create_tree_view(
-            self.blend_files_model, ["File", "Type"]
-        )
-        blend_files_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
-        blend_files_tree_view.set_row_separator_func(self.row_separator_func, None)
-        blend_files_tree_view.connect("button-press-event", self.on_blend_cell_clicked)
+        self.blend_files_tree_view = create_tree_view(self.blend_files_model, ["File"])
+        self.blend_files_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
+        self.blend_files_tree_view.connect("button-press-event", self.on_blend_cell_clicked)
         self.load_blend_files()
 
         blend_files_scrolled = Gtk.ScrolledWindow()
         blend_files_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        blend_files_scrolled.add(blend_files_tree_view)
+        blend_files_scrolled.add(self.blend_files_tree_view)
 
         number_entries_tooltip = "0 = Use from .blend file"
 
@@ -256,9 +254,6 @@ class MainWindow(Gtk.Window):
         self.set_titlebar(header_bar)
         self.add(vbox)
 
-    def row_separator_func(self, tree_model: Gtk.TreeModel, tree_iter: Gtk.TreeIter, data) -> bool:
-        return tree_model[tree_iter][2]
-
     def on_settings_clicked(self, button: Gtk.Button) -> None:
         config_dialog = ConfigDialog(config)
         response = config_dialog.run()
@@ -286,19 +281,24 @@ class MainWindow(Gtk.Window):
             lines = file.readlines()
             file.close()
 
+            recent_files_row = self.blend_files_model.append(None, ["Recent"])
+
             for line in lines:
                 path = line.strip()
-                self.blend_files_model.append([path, "Recent", False])
+                self.blend_files_model.append(recent_files_row, [path])
         except IOError:
             pass
 
-        self.blend_files_model.append(["", "SEPARATOR", True])
+        default_dir_files_row = self.blend_files_model.append(None, ["Default Directory"])
 
         for dir,_,_ in os.walk(config.settings["default_blender_dir"]):
             files = glob.glob(os.path.join(dir, "*.blend"))
             if files:
                 for file in files:
-                    self.blend_files_model.append([file, "Default Directory", False])
+                    self.blend_files_model.append(default_dir_files_row, [file])
+
+
+        self.blend_files_tree_view.expand_all()
 
     def on_blend_cell_clicked(self, tree_view: Gtk.TreeView, event: Gdk.EventButton) -> None:
         if event.button == 1 and event.type == Gdk.EventType._2BUTTON_PRESS:
