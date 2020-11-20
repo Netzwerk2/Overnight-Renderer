@@ -204,12 +204,13 @@ class MainWindow(Gtk.Window):
         self.queue_button = Gtk.Button(label="Queue")
         self.queue_button.connect("clicked", self.on_queue_clicked)
 
-        columns = ["File", "Engine", "Type", "Output", "Finished"]
-        render_tasks_tree_view = create_tree_view(
-            self.render_tasks_model, columns
-        )
-        render_tasks_tree_view.connect("key-press-event", self.on_tree_view_key_pressed)
-        render_tasks_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
+        columns = ["File", "Engine", "Type", "Output"]
+        queue_tree_view = create_tree_view(self.render_tasks_model, columns)
+        queue_tree_view.connect("key-press-event", self.on_tree_view_key_pressed)
+        queue_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
+        finished_toggle_renderer = Gtk.CellRendererToggle()
+        finished_toggle_column = Gtk.TreeViewColumn("Finished", finished_toggle_renderer, active=4)
+        queue_tree_view.append_column(finished_toggle_column)
 
         grid = Gtk.Grid(column_spacing=12, row_spacing=12)
         grid.set_halign(Gtk.Align.CENTER)
@@ -217,7 +218,7 @@ class MainWindow(Gtk.Window):
 
         self.stack.add_titled(blend_files_scrolled, "blend_files", "Blend Files")
         self.stack.add_titled(grid, "render_settings", "Render Settings")
-        self.stack.add_titled(render_tasks_tree_view, "queue", "Queue")
+        self.stack.add_titled(queue_tree_view, "queue", "Queue")
 
         grid.attach(blend_file_label, 0, 0, 1, 1)
         grid.attach(self.blend_file_chooser_button, 1, 0, 1, 1)
