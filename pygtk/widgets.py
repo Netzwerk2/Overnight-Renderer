@@ -29,8 +29,8 @@ def create_entry(numbers_only: bool=True) -> Union[NumberEntry, Gtk.Entry]:
     return entry
 
 
-def create_file_chooser_button(self, dialog_text, action: Gtk.FileChooserAction, button: Gtk.ButtonsType, filter_blend: bool) -> None:
-    file_chooser_dialog = create_file_chooser_dialog(self, dialog_text, action, button)
+def create_file_chooser_button(self, dialog_title, action: Gtk.FileChooserAction, button: Gtk.ButtonsType, filter_blend: bool) -> None:
+    file_chooser_dialog = create_file_chooser_dialog(self, dialog_title, action, button)
     if filter_blend:
         add_blend_filters(file_chooser_dialog)
     return Gtk.FileChooserButton(dialog=file_chooser_dialog)

@@ -43,7 +43,7 @@ class MainWindow(Gtk.Window):
     end_frame_entry = None
     output_format_combo_box = None
     output_name_entry = None
-    output_file_chooser_button = None
+    output_path_chooser_button = None
     python_expressions_entry = None
     post_rendering_combo_box = None
     render_button = None
@@ -184,8 +184,8 @@ class MainWindow(Gtk.Window):
         self.output_name_entry = create_entry(False)
         self.output_name_entry.set_text("Render")
 
-        output_file_label = create_label("Output Path")
-        self.output_file_chooser_button = create_file_chooser_button(
+        output_path_label = create_label("Output Path")
+        self.output_path_chooser_button = create_file_chooser_button(
             self, "Select output file directory", Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
         )
 
@@ -243,8 +243,8 @@ class MainWindow(Gtk.Window):
         grid.attach(self.output_format_combo_box, 1, 10, 1, 1)
         grid.attach(output_name_label, 0, 11, 1, 1)
         grid.attach(self.output_name_entry, 1, 11, 1, 1)
-        grid.attach(output_file_label, 0, 12, 1, 1)
-        grid.attach(self.output_file_chooser_button, 1, 12, 1, 1)
+        grid.attach(output_path_label, 0, 12, 1, 1)
+        grid.attach(self.output_path_chooser_button, 1, 12, 1, 1)
         grid.attach(python_expressions_label, 0, 13, 1, 1)
         grid.attach(self.python_expressions_entry, 1, 13, 1, 1)
         grid.attach(post_rendering_label, 0, 14, 1, 1)
@@ -264,10 +264,10 @@ class MainWindow(Gtk.Window):
 
         if response == Gtk.ResponseType.APPLY:
             settings = config.settings
-            settings["blender_config"] = config_dialog.blender_config_entry.get_text()
+            settings["blender_config"] = config_dialog.blender_config_chooser_button.get_filename()
+            settings["default_output_dir"] = config_dialog.output_dir_chooser_button.get_filename()
+            settings["default_blender_dir"] = config_dialog.default_dir_chooser_button.get_filename()
             settings["load_render_settings"] = config_dialog.load_render_settings_check_button.get_active()
-            settings["default_output_dir"] = config_dialog.output_dir_entry.get_text()
-            settings["default_blender_dir"] = config_dialog.default_dir_entry.get_text()
             config.modify(settings)
         elif response == Gtk.ResponseType.CANCEL:
             pass
@@ -278,15 +278,18 @@ class MainWindow(Gtk.Window):
         self.load_blend_files()
 
     def load_blend_files(self) -> None:
-        file = open(f"{config.settings['blender_config']}/recent-files.txt", "r")
-        lines = file.readlines()
-        file.close()
-
         self.blend_files_model.clear()
 
-        for line in lines:
-            path = line.strip()
-            self.blend_files_model.append([path, "Recent", False])
+        try:
+            file = open(f"{config.settings['blender_config']}/recent-files.txt", "r")
+            lines = file.readlines()
+            file.close()
+
+            for line in lines:
+                path = line.strip()
+                self.blend_files_model.append([path, "Recent", False])
+        except IOError:
+            pass
 
         self.blend_files_model.append(["", "SEPARATOR", True])
 
@@ -309,11 +312,11 @@ class MainWindow(Gtk.Window):
         self.set_output_dir(button.get_filename())
 
     def set_output_dir(self, path: str) -> None:
-        print(self.output_file_chooser_button.get_filename())
+        print(self.output_path_chooser_button.get_filename())
         if config.settings["load_render_settings"]:
             self.load_render_settings(path)
-        if self.output_file_chooser_button.get_filename() == "/tmp" or self.output_file_chooser_button.get_filename() is None:
-            self.output_file_chooser_button.set_filename(f"{config.settings['default_output_dir']}")
+        if self.output_path_chooser_button.get_filename() == "/tmp" or self.output_path_chooser_button.get_filename() is None:
+            self.output_path_chooser_button.set_filename(f"{config.settings['default_output_dir']}")
 
     def load_render_settings(self, file_path: str) -> None:
         with subprocess.Popen(
@@ -363,7 +366,7 @@ class MainWindow(Gtk.Window):
             self.resolution_percentage_entry.set_text(render_settings[6])
             self.start_frame_entry.set_text(render_settings[7])
             self.end_frame_entry.set_text(render_settings[8])
-            self.output_file_chooser_button.set_filename(os.path.dirname(render_settings[10]))
+            self.output_path_chooser_button.set_filename(os.path.dirname(render_settings[10]))
 
     def on_output_type_changed(self, combo_box: Gtk.ComboBox) -> None:
         output_type_iter = combo_box.get_active_iter()
@@ -433,7 +436,7 @@ class MainWindow(Gtk.Window):
         output_format_model = self.output_format_combo_box.get_model()
         output_format = output_format_model[output_format_iter][1]
 
-        output_file = self.output_file_chooser_button.get_filename() + self.output_name_entry.get_text()
+        output_file = os.path.join(self.output_path_chooser_button.get_filename(), self.output_name_entry.get_text())
 
         python_expressions = self.python_expressions_entry.get_text()
 

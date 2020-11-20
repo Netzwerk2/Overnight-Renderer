@@ -8,7 +8,7 @@ import toml
 import subprocess
 
 from typing import Any, Dict
-from widgets import create_entry, create_label
+from widgets import create_entry, create_label, create_file_chooser_button
 
 class Config:
     def __init__(self, settings: Dict[Any, Any]) -> None:
@@ -63,9 +63,9 @@ class Config:
 
 
 class ConfigDialog(Gtk.Dialog):
-    blender_config_entry = None
-    default_dir_entry = None
-    output_dir_entry = None
+    blender_config_chooser_button = None
+    default_dir_chooser_button = None
+    output_dir_chooser_button = None
     load_render_settings_check_button = None
 
     def __init__(self, config) -> None:
@@ -84,16 +84,22 @@ class ConfigDialog(Gtk.Dialog):
         header_bar.set_decoration_layout(":close")
 
         blender_config_label = create_label("Blender Config Directory")
-        self.blender_config_entry = create_entry(False)
-        self.blender_config_entry.set_text(self.config.settings["blender_config"])
+        self.blender_config_chooser_button = create_file_chooser_button(
+            self, "Select Blender config directory", Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
+        )
+        self.blender_config_chooser_button.set_filename(self.config.settings["blender_config"])
 
         default_dir_label = create_label("Default Blender Directory")
-        self.default_dir_entry = create_entry(False)
-        self.default_dir_entry.set_text(self.config.settings["default_blender_dir"])
+        self.default_dir_chooser_button = create_file_chooser_button(
+            self, "Select default Blender directory", Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
+        )
+        self.default_dir_chooser_button.set_filename(self.config.settings["default_blender_dir"])
 
         output_dir_label = create_label("Default Output Directory")
-        self.output_dir_entry = create_entry(False)
-        self.output_dir_entry.set_text(self.config.settings["default_output_dir"])
+        self.output_dir_chooser_button = create_file_chooser_button(
+            self, "Select default output directory", Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
+        )
+        self.output_dir_chooser_button.set_filename(self.config.settings["default_output_dir"])
 
         load_render_settings_label = create_label("Load render settings from selected .blend file")
         self.load_render_settings_check_button = Gtk.CheckButton()
@@ -104,11 +110,11 @@ class ConfigDialog(Gtk.Dialog):
         grid.set_valign(Gtk.Align.CENTER)
 
         grid.attach(blender_config_label, 0, 0, 1, 1)
-        grid.attach(self.blender_config_entry, 1, 0, 1, 1)
+        grid.attach(self.blender_config_chooser_button, 1, 0, 1, 1)
         grid.attach(default_dir_label, 0, 1, 1, 1)
-        grid.attach(self.default_dir_entry, 1, 1, 1, 1)
+        grid.attach(self.default_dir_chooser_button, 1, 1, 1, 1)
         grid.attach(output_dir_label, 0, 2, 1, 1)
-        grid.attach(self.output_dir_entry, 1, 2, 1, 1)
+        grid.attach(self.output_dir_chooser_button, 1, 2, 1, 1)
         grid.attach(load_render_settings_label, 0, 3, 1, 1)
         grid.attach(self.load_render_settings_check_button, 1, 3, 1, 1)
 
@@ -121,7 +127,4 @@ class ConfigDialog(Gtk.Dialog):
         )
 
         self.show_all()
-
-    def on_apply_clicked(self, button: Gtk.Button) -> None:
-        pass
 
