@@ -1,4 +1,4 @@
-class RenderTask():
+class RenderTask:
     def __init__(
         self, blend_file: str, render_engine: str, render_device: str,
         render_samples: int, resolution_x: int, resolution_y: int,

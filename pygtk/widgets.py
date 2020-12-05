@@ -1,8 +1,10 @@
 import gi
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 from typing import Union, List
+
 
 class NumberEntry(Gtk.Entry):
     def __init__(self):
@@ -20,7 +22,7 @@ def create_label(text: str) -> Gtk.Label:
     return label
 
 
-def create_entry(numbers_only: bool=True) -> Union[NumberEntry, Gtk.Entry]:
+def create_entry(numbers_only: bool = True) -> Union[NumberEntry, Gtk.Entry]:
     if numbers_only:
         entry = NumberEntry()
     else:
@@ -29,14 +31,18 @@ def create_entry(numbers_only: bool=True) -> Union[NumberEntry, Gtk.Entry]:
     return entry
 
 
-def create_file_chooser_button(self, dialog_title, action: Gtk.FileChooserAction, button: Gtk.ButtonsType, filter_blend: bool) -> None:
+def create_file_chooser_button(
+        self, dialog_title, action: Gtk.FileChooserAction, button: Gtk.ButtonsType, filter_blend: bool
+) -> Gtk.FileChooserButton:
     file_chooser_dialog = create_file_chooser_dialog(self, dialog_title, action, button)
     if filter_blend:
         add_blend_filters(file_chooser_dialog)
     return Gtk.FileChooserButton(dialog=file_chooser_dialog)
 
 
-def create_file_chooser_dialog(self, title: str, action: Gtk.FileChooserAction, button: Gtk.ButtonsType) -> Gtk.FileChooserDialog:
+def create_file_chooser_dialog(
+        self, title: str, action: Gtk.FileChooserAction, button: Gtk.ButtonsType
+) -> Gtk.FileChooserDialog:
     file_chooser_dialog = Gtk.FileChooserDialog(
         title,
         self,
@@ -59,7 +65,7 @@ def add_blend_filters(dialog: Gtk.FileChooserDialog) -> None:
     dialog.add_filter(filter_blend)
 
 
-def create_combo_box(model: Gtk.ListStore=None, labels: List[str]=None) -> Gtk.ComboBox:
+def create_combo_box(model: Gtk.ListStore = None, labels: List[str] = None) -> Gtk.ComboBox:
     if model is None:
         model = Gtk.ListStore(str)
     if labels is not None:
@@ -71,6 +77,7 @@ def create_combo_box(model: Gtk.ListStore=None, labels: List[str]=None) -> Gtk.C
     combo_box.add_attribute(renderer_text, "text", 0)
     combo_box.set_active(0)
     return combo_box
+
 
 def create_check_button() -> Gtk.CheckButton:
     check_button = Gtk.CheckButton()
@@ -84,4 +91,3 @@ def create_tree_view(model: Gtk.ListStore, columns: List[str]) -> Gtk.TreeView:
         column_text = Gtk.TreeViewColumn(column, renderer_text, text=i)
         tree_view.append_column(column_text)
     return tree_view
-

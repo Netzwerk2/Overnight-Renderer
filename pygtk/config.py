@@ -3,12 +3,12 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-import os
 import toml
 import subprocess
 
 from typing import Any, Dict
-from widgets import create_entry, create_label, create_file_chooser_button
+from widgets import create_label, create_file_chooser_button
+
 
 class Config:
     def __init__(self, settings: Dict[Any, Any]) -> None:
@@ -127,4 +127,3 @@ class ConfigDialog(Gtk.Dialog):
         )
 
         self.show_all()
-

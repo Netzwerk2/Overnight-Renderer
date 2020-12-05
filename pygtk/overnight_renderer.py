@@ -2,18 +2,18 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Notify", "0.7")
-from gi.repository import Gtk, Notify, GLib, Gdk, Gio
+from gi.repository import Gtk, Notify, Gdk, Gio
 
 import os
 import glob
 import time
-import threading
+import trio
+import trio_gtk
 import subprocess
-import toml
+import re
 from typing import Optional, Tuple
 
-from widgets import create_label, create_entry, create_file_chooser_dialog, \
-    create_combo_box, create_check_button, create_tree_view, \
+from widgets import create_label, create_entry, create_combo_box, create_tree_view, \
     create_file_chooser_button
 
 from render_task import RenderTask
@@ -24,12 +24,17 @@ from convert_input_to_argument import convert_output_format, convert_animation, 
 
 from config import Config, ConfigDialog
 
+from render_info import RenderInfo
+
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-settings: Optional[Config] = None
+config: Optional[Config] = None
+
 
 class MainWindow(Gtk.Window):
     stack = None
+    info_bar = None
+    info_bar_label = None
     blend_files_tree_view = None
     blend_files_model = Gtk.TreeStore(str)
     blend_file_chooser_button = None
@@ -49,17 +54,19 @@ class MainWindow(Gtk.Window):
     post_rendering_combo_box = None
     render_button = None
     queue_button = None
-    render_tasks_model = Gtk.ListStore(str, str, str, str, bool)
+    render_tasks_model = Gtk.ListStore(str, str, str, str, int)
 
     render_queue = []
     current_render_task = None
-    render_thread = None
+    process = None
 
-    def __init__(self) -> None:
+    def __init__(self, nursery: trio.Nursery) -> None:
         super(MainWindow, self).__init__()
         self.set_title("Overnight Renderer")
         self.set_border_width(20)
         self.set_position(Gtk.WindowPosition.CENTER)
+
+        self.nursery = nursery
 
         self.create_content()
 
@@ -86,8 +93,14 @@ class MainWindow(Gtk.Window):
         reload_image = Gtk.Image.new_from_gicon(reload_icon, Gtk.IconSize.BUTTON)
         reload_button.add(reload_image)
 
+        self.info_bar = Gtk.InfoBar()
+        self.info_bar.set_revealed(False)
+        self.info_bar_label = create_label("")
+        self.info_bar.get_content_area().pack_start(self.info_bar_label, True, False, 0)
+
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         vbox.set_halign(Gtk.Align.CENTER)
+        vbox.pack_start(self.info_bar, True, False, 0)
         vbox.pack_start(stack_switcher, True, False, 0)
         vbox.pack_start(self.stack, True, False, 0)
 
@@ -99,7 +112,6 @@ class MainWindow(Gtk.Window):
         self.blend_files_tree_view = create_tree_view(self.blend_files_model, ["File"])
         self.blend_files_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
         self.blend_files_tree_view.connect("button-press-event", self.on_blend_cell_clicked)
-        self.load_blend_files()
 
         blend_files_scrolled = Gtk.ScrolledWindow()
         blend_files_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -148,6 +160,7 @@ class MainWindow(Gtk.Window):
         output_type_label = create_label("Output Type")
         output_types = ["Animation", "Single Frame"]
         self.output_type_combo_box = create_combo_box(labels=output_types)
+        self.output_type_combo_box.set_active(1)
         self.output_type_combo_box.connect("changed", self.on_output_type_changed)
 
         start_frame_label = create_label("Start Frame")
@@ -156,6 +169,7 @@ class MainWindow(Gtk.Window):
 
         end_frame_label = create_label("End Frame")
         self.end_frame_entry = create_entry(True)
+        self.end_frame_entry.set_sensitive(False)
         self.end_frame_entry.set_text("250")
 
         output_format_label = create_label("Output Format")
@@ -206,9 +220,9 @@ class MainWindow(Gtk.Window):
         queue_tree_view = create_tree_view(self.render_tasks_model, columns)
         queue_tree_view.connect("key-press-event", self.on_tree_view_key_pressed)
         queue_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
-        finished_toggle_renderer = Gtk.CellRendererToggle()
-        finished_toggle_column = Gtk.TreeViewColumn("Finished", finished_toggle_renderer, active=4)
-        queue_tree_view.append_column(finished_toggle_column)
+        finished_progress_renderer = Gtk.CellRendererProgress()
+        finished_progress_column = Gtk.TreeViewColumn("Progress", finished_progress_renderer, value=4)
+        queue_tree_view.append_column(finished_progress_column)
 
         grid = Gtk.Grid(column_spacing=12, row_spacing=12)
         grid.set_halign(Gtk.Align.CENTER)
@@ -291,12 +305,11 @@ class MainWindow(Gtk.Window):
 
         default_dir_files_row = self.blend_files_model.append(None, ["Default Directory"])
 
-        for dir,_,_ in os.walk(config.settings["default_blender_dir"]):
+        for dir, _, _ in os.walk(config.settings["default_blender_dir"]):
             files = glob.glob(os.path.join(dir, "*.blend"))
             if files:
                 for file in files:
                     self.blend_files_model.append(default_dir_files_row, [file])
-
 
         self.blend_files_tree_view.expand_all()
 
@@ -313,7 +326,6 @@ class MainWindow(Gtk.Window):
         self.set_output_dir(button.get_filename())
 
     def set_output_dir(self, path: str) -> None:
-        print(self.output_path_chooser_button.get_filename())
         if config.settings["load_render_settings"]:
             self.load_render_settings(path)
         if self.output_path_chooser_button.get_filename() == "/tmp" or self.output_path_chooser_button.get_filename() is None:
@@ -394,9 +406,7 @@ class MainWindow(Gtk.Window):
 
         self.render_button.set_sensitive(False)
 
-        render_lambda = lambda: self.render(self.current_render_task)
-        self.render_thread = threading.Thread(target=render_lambda)
-        self.render_thread.start()
+        self.nursery.start_soon(self.render, self.current_render_task)
 
     def on_queue_clicked(self, button: Gtk.Button) -> None:
         render_task, render_engine_display = self.create_render_task()
@@ -461,36 +471,130 @@ class MainWindow(Gtk.Window):
             render_engine_display,
             frames_argument(),
             render_task.output_file,
-            False
+            0
         ])
         self.render_queue.append(render_task)
 
-    def render(self, render_task: RenderTask) -> None:
-        subprocess.run(
-            [
-                "blender",
-                "-b", render_task.blend_file,
-                "-E", render_task.render_engine
-            ]
-            + [
-                "-o", render_task.output_file,
-            ]
-            + convert_output_format(render_task.output_format)
-            + convert_animation(render_task.output_type, render_task.start_frame, render_task.end_frame)
-            + [
-                "--python-expr",
-                "import bpy; "
-                + convert_render_device(render_task.render_device)
-                + convert_render_samples(render_task.render_samples, render_task.render_engine)
-                + convert_resolution_x(render_task.resolution_x)
-                + convert_resolution_y(render_task.resolution_y)
-                + convert_resolution_percentage(render_task.resolution_percentage)
-                + f"{render_task.python_expressions}"
-            ]
-            + convert_single_frame(render_task.output_type, render_task.start_frame)
+    async def render(self, render_task: RenderTask) -> None:
+        cmd_line = [
+                       "blender",
+                       "-b", render_task.blend_file,
+                       "-E", render_task.render_engine,
+                       "-o", render_task.output_file,
+                   ] + convert_output_format(render_task.output_format) \
+                   + convert_animation(render_task.output_type, render_task.start_frame, render_task.end_frame) \
+                   + [
+                       "--python-expr",
+                       "import bpy; "
+                       + convert_render_device(render_task.render_device)
+                       + convert_render_samples(render_task.render_samples, render_task.render_engine)
+                       + convert_resolution_x(render_task.resolution_x)
+                       + convert_resolution_y(render_task.resolution_y)
+                       + convert_resolution_percentage(render_task.resolution_percentage)
+                       + f"{render_task.python_expressions}"
+                   ] \
+                   + convert_single_frame(render_task.output_type, render_task.start_frame)
+        async with await trio.open_process(
+            cmd_line,
+            stdout=subprocess.PIPE
+        ) as process:
+            self.process = process
+            self.info_bar.set_revealed(True)
+            async for raw_line in process.stdout:
+                line = raw_line.strip().decode("utf-8")
+                parts = line.split("\n")
+ 
+                if render_task.output_type == "Animation":
+                    end_frame = self.current_render_task.end_frame
+                else:
+                    end_frame = self.current_render_task.start_frame
+                info, progress = self.parse_blender_logs(parts[-1], end_frame)
+
+                if info is not None:
+                    self.info_bar_label.set_text(str(info))
+                if progress is not None:
+                    self.update_progress(progress)
+
+        self.post_rendering()
+
+    def update_progress(self, progress: float) -> None:
+        self.render_tasks_model[self.render_queue.index(self.current_render_task)][4] = progress
+
+    def parse_blender_logs(self, line: str, end_frame: int) -> Tuple[Optional[RenderInfo], Optional[int]]:
+        m = re.search(
+            r"""
+            ^
+            (?P<frame> [^|]*)
+            \s \| \s
+            (?P<time> Time: [^|]*)
+            \s \| \s
+            (?P<payload> .*?)
+            \s*
+            $
+            """,
+            line,
+            flags=re.VERBOSE
         )
 
-        GLib.idle_add(self.post_rendering)
+        if not m:
+            return None, None
+
+        frame = m.group("frame")
+        time = m.group("time")
+        payload = m.group("payload")
+        remaining = None
+        mem = None
+        layer = None
+        status = None
+        progress = None
+
+        if payload.startswith("Remaining:"):
+            remaining, payload = payload.split(" | ", maxsplit=1)
+        if payload.startswith("Mem:"):
+            mem, layer, status = payload.split(" | ", maxsplit=2)
+        elif payload.startswith("Compositing"):
+            status = payload
+
+        if status is not None and status.startswith("Rendered "):
+            progress = self.parse_status(status, frame, end_frame)
+
+        render_info = RenderInfo(frame, time, remaining, mem, layer, status)
+        return render_info, progress
+
+    def parse_status(self, status: str, frame: str, end_frame: int) -> float:
+        m = re.search(
+            r"""
+            ^
+            Rendered \s+
+            (?P<tiles> [0-9]+) / (?P<total_tiles> [0-9]+) \s+
+            Tiles, \s+
+            (
+                Sample \s+
+                (?P<samples> [0-9]+) / (?P<total_samples> [0-9]+)
+            )?
+            \b
+            """,
+            status,
+            flags=re.VERBOSE
+        )
+
+        tiles = int(m.group("tiles"))
+        total_tiles = int(m.group("total_tiles"))
+        try:
+            samples = int(m.group("samples"))
+            total_samples = int(m.group("total_samples"))
+        except TypeError:
+            samples = 1
+            total_samples = 1
+
+        frame = int(re.search("^ Fra: (?P<frame> [0-9]+)", frame, flags=re.VERBOSE).group("frame"))
+
+        if samples == total_samples:
+            samples = 0
+
+        f_tiles = tiles + samples / total_samples
+        f_frames = frame - 1 + f_tiles / total_tiles
+        return (f_frames / end_frame) * 100
 
     def post_rendering(self) -> None:
         print("Rendering complete!")
@@ -500,19 +604,18 @@ class MainWindow(Gtk.Window):
         )
         notification.show()
 
+        self.process = None
         self.current_render_task.finished = True
-        self.render_tasks_model[self.render_queue.index(self.current_render_task)][4] = True
-        self.render_thread.join()
+        self.render_tasks_model[self.render_queue.index(self.current_render_task)][4] = 100
 
         for render_task in self.render_queue:
             if not render_task.finished:
                 self.current_render_task = render_task
-                render_lambda = lambda: self.render(self.current_render_task)
-                self.render_thread = threading.Thread(target=render_lambda)
-                self.render_thread.start()
+                self.nursery.start_soon(self.render, self.current_render_task)
                 return
 
         self.render_button.set_sensitive(True)
+        self.info_bar.set_revealed(False)
 
         post_rendering_iter = self.post_rendering_combo_box.get_active_iter()
         post_rendering_model = self.post_rendering_combo_box.get_model()
@@ -534,15 +637,29 @@ class MainWindow(Gtk.Window):
             model, iter = tree_view.get_selection().get_selected()
             model.remove(iter)
 
+
+def main_quit(window: MainWindow, event: Gdk.Event) -> None:
+    Gtk.main_quit()
+    if window.process is not None:
+        window.process.terminate()
+
+
+async def main() -> None:
+    async with trio.open_nursery() as nursery:
+        global config
+        try:
+            config = Config.create_from_file("settings.toml")
+        except IOError:
+            config = Config.create_new()
+            config.write()
+
+        main_window = MainWindow(nursery)
+        main_window.connect("delete-event", main_quit)
+        main_window.show_all()
+        main_window.load_blend_files()
+
+        await trio.sleep_forever()
+
+
 if __name__ == "__main__":
-    try:
-        config = Config.create_from_file("settings.toml")
-    except IOError:
-        config = Config.create_new()
-        config.write()
-
-    main_window = MainWindow()
-    main_window.connect("delete-event", Gtk.main_quit)
-    main_window.show_all()
-    Gtk.main()
-
+    trio_gtk.run(main)
