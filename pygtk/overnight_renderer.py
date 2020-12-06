@@ -6,7 +6,6 @@ from gi.repository import Gtk, Notify, Gdk, Gio
 
 import os
 import glob
-import time
 import trio
 import trio_gtk
 import subprocess
@@ -515,7 +514,7 @@ class MainWindow(Gtk.Window):
                 if progress is not None:
                     self.update_progress(progress)
 
-        self.post_rendering()
+        await self.post_rendering()
 
     def update_progress(self, progress: float) -> None:
         self.render_tasks_model[self.render_queue.index(self.current_render_task)][4] = progress
@@ -596,7 +595,7 @@ class MainWindow(Gtk.Window):
         f_frames = frame - 1 + f_tiles / total_tiles
         return (f_frames / end_frame) * 100
 
-    def post_rendering(self) -> None:
+    async def post_rendering(self) -> None:
         print("Rendering complete!")
         Notify.init("Overnight Renderer")
         notification = Notify.Notification.new(
@@ -606,7 +605,6 @@ class MainWindow(Gtk.Window):
 
         self.process = None
         self.current_render_task.finished = True
-        self.render_tasks_model[self.render_queue.index(self.current_render_task)][4] = 100
 
         for render_task in self.render_queue:
             if not render_task.finished:
@@ -622,11 +620,11 @@ class MainWindow(Gtk.Window):
         post_rendering = post_rendering_model[post_rendering_iter][0]
 
         if post_rendering == "Suspend":
-            time.sleep(30)
+            await trio.sleep(30)
             print("Suspending...")
-            subprocess.run(["systemctl suspend"])
+            subprocess.run(["systemctl", "suspend"])
         elif post_rendering == "Shutdown":
-            time.sleep(30)
+            await trio.sleep(30)
             print("Shutting down...")
             subprocess.run(["poweroff"])
 
