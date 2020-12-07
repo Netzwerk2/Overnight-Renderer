@@ -7,7 +7,7 @@ import toml
 import subprocess
 
 from typing import Any, Dict
-from widgets import create_label, create_file_chooser_button
+from widgets import create_label, create_file_chooser_button, create_tree_view
 
 
 class Config:
@@ -41,7 +41,39 @@ class Config:
             "blender_config": config_dir,
             "default_blender_dir": "",
             "default_output_dir": "",
-            "load_render_settings": True
+            "load_render_settings": True,
+            "render_info": [
+                {
+                    "name": "frame",
+                    "display_name": "Frame",
+                    "visible": True
+                },
+                {
+                    "name": "time",
+                    "display_name": "Time",
+                    "visible": True
+                },
+                {
+                    "name": "remaining",
+                    "display_name": "Remaining Time",
+                    "visible": True
+                },
+                {
+                    "name": "mem",
+                    "display_name": "Memory",
+                    "visible": True
+                },
+                {
+                    "name": "layer",
+                    "display_name": "Scene, Layer",
+                    "visible": True
+                },
+                {
+                    "name": "status",
+                    "display_name": "Status",
+                    "visible": True
+                }
+            ]
         }
 
         return Config(settings)
@@ -67,6 +99,8 @@ class ConfigDialog(Gtk.Dialog):
     default_dir_chooser_button = None
     output_dir_chooser_button = None
     load_render_settings_check_button = None
+    render_info_model = None
+    render_info_tree_view = None
 
     def __init__(self, config) -> None:
         super(ConfigDialog, self).__init__()
@@ -101,9 +135,26 @@ class ConfigDialog(Gtk.Dialog):
         )
         self.output_dir_chooser_button.set_filename(self.config.settings["default_output_dir"])
 
-        load_render_settings_label = create_label("Load render settings from selected .blend file")
+        load_render_settings_label = create_label("Load .blend file render settings")
         self.load_render_settings_check_button = Gtk.CheckButton()
         self.load_render_settings_check_button.set_active(self.config.settings["load_render_settings"])
+
+        render_info_label = create_label("Render Information")
+        self.render_info_model = Gtk.ListStore(str, bool, str)
+        for i in range(6):
+            self.render_info_model.append(
+                [
+                    self.config.settings["render_info"][i]["display_name"],
+                    self.config.settings["render_info"][i]["visible"],
+                    self.config.settings["render_info"][i]["name"]
+                ]
+            )
+        self.render_info_tree_view = create_tree_view(self.render_info_model, ["Category"])
+        self.render_info_tree_view.set_reorderable(True)
+        visible_toggle_renderer = Gtk.CellRendererToggle()
+        visible_toggle_renderer.connect("toggled", self.on_cell_toggled)
+        visible_toggle_column = Gtk.TreeViewColumn("Visible", visible_toggle_renderer, active=1)
+        self.render_info_tree_view.append_column(visible_toggle_column)
 
         grid = Gtk.Grid(column_spacing=12, row_spacing=12)
         grid.set_halign(Gtk.Align.CENTER)
@@ -117,6 +168,8 @@ class ConfigDialog(Gtk.Dialog):
         grid.attach(self.output_dir_chooser_button, 1, 2, 1, 1)
         grid.attach(load_render_settings_label, 0, 3, 1, 1)
         grid.attach(self.load_render_settings_check_button, 1, 3, 1, 1)
+        grid.attach(render_info_label, 0, 4, 1, 1)
+        grid.attach(self.render_info_tree_view, 1, 4, 1, 1)
 
         self.set_titlebar(header_bar)
         self.get_content_area().add(grid)
@@ -127,3 +180,7 @@ class ConfigDialog(Gtk.Dialog):
         )
 
         self.show_all()
+
+    def on_cell_toggled(self, cell_renderer_toggle: Gtk.CellRendererToggle, path: str) -> None:
+        self.render_info_model[path][1] = not self.render_info_model[path][1]
+

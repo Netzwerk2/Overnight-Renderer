@@ -65,7 +65,7 @@ def add_blend_filters(dialog: Gtk.FileChooserDialog) -> None:
     dialog.add_filter(filter_blend)
 
 
-def create_combo_box(model: Gtk.ListStore = None, labels: List[str] = None) -> Gtk.ComboBox:
+def create_combo_box(model: Gtk.TreeModel = None, labels: List[str] = None) -> Gtk.ComboBox:
     if model is None:
         model = Gtk.ListStore(str)
     if labels is not None:

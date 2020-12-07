@@ -35,7 +35,7 @@ class MainWindow(Gtk.Window):
     info_bar = None
     info_bar_label = None
     blend_files_tree_view = None
-    blend_files_model = Gtk.TreeStore(str)
+    blend_files_model = None
     blend_file_chooser_button = None
     render_engine_combo_box = None
     render_device_combo_box = None
@@ -53,7 +53,7 @@ class MainWindow(Gtk.Window):
     post_rendering_combo_box = None
     render_button = None
     queue_button = None
-    render_tasks_model = Gtk.ListStore(str, str, str, str, int)
+    render_tasks_model = None
 
     render_queue = []
     current_render_task = None
@@ -108,8 +108,9 @@ class MainWindow(Gtk.Window):
         header_bar.pack_start(reload_button)
         header_bar.pack_end(settings_button)
 
+        self.blend_files_model = Gtk.TreeStore(str)
         self.blend_files_tree_view = create_tree_view(self.blend_files_model, ["File"])
-        self.blend_files_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
+        self.blend_files_tree_view.set_enable_tree_lines(True)
         self.blend_files_tree_view.connect("button-press-event", self.on_blend_cell_clicked)
 
         blend_files_scrolled = Gtk.ScrolledWindow()
@@ -215,6 +216,7 @@ class MainWindow(Gtk.Window):
         self.queue_button = Gtk.Button(label="Queue")
         self.queue_button.connect("clicked", self.on_queue_clicked)
 
+        self.render_tasks_model = Gtk.ListStore(str, str, str, str, int)
         columns = ["File", "Engine", "Type", "Output"]
         queue_tree_view = create_tree_view(self.render_tasks_model, columns)
         queue_tree_view.connect("key-press-event", self.on_tree_view_key_pressed)
@@ -277,6 +279,11 @@ class MainWindow(Gtk.Window):
             settings["default_output_dir"] = config_dialog.output_dir_chooser_button.get_filename()
             settings["default_blender_dir"] = config_dialog.default_dir_chooser_button.get_filename()
             settings["load_render_settings"] = config_dialog.load_render_settings_check_button.get_active()
+            for i in range(6):
+                render_info_iter = config_dialog.render_info_model.get_iter(i)
+                settings["render_info"][i]["display_name"] = config_dialog.render_info_model[render_info_iter][0]
+                settings["render_info"][i]["visible"] = config_dialog.render_info_model[render_info_iter][1]
+                settings["render_info"][i]["name"] = config_dialog.render_info_model[render_info_iter][2]
             config.modify(settings)
         elif response == Gtk.ResponseType.CANCEL:
             pass
@@ -557,7 +564,7 @@ class MainWindow(Gtk.Window):
         if status is not None and status.startswith("Rendered "):
             progress = self.parse_status(status, frame, end_frame)
 
-        render_info = RenderInfo(frame, time, remaining, mem, layer, status)
+        render_info = RenderInfo(frame, time, remaining, mem, layer, status, config)
         return render_info, progress
 
     def parse_status(self, status: str, frame: str, end_frame: int) -> float:
