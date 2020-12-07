@@ -95,6 +95,7 @@ class MainWindow(Gtk.Window):
         self.info_bar = Gtk.InfoBar()
         self.info_bar.set_revealed(False)
         self.info_bar_label = create_label("")
+        self.info_bar_label.set_line_wrap(True)
         self.info_bar.get_content_area().pack_start(self.info_bar_label, True, False, 0)
 
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -223,6 +224,7 @@ class MainWindow(Gtk.Window):
         queue_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
         finished_progress_renderer = Gtk.CellRendererProgress()
         finished_progress_column = Gtk.TreeViewColumn("Progress", finished_progress_renderer, value=4)
+        finished_progress_column.set_min_width(70)
         queue_tree_view.append_column(finished_progress_column)
 
         grid = Gtk.Grid(column_spacing=12, row_spacing=12)
