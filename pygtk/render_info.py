@@ -5,8 +5,9 @@ from config import Config
 
 class RenderInfo:
     def __init__(
-        self, frame: Optional[str], time: Optional[str], remaining: Optional[str],
-        mem: Optional[str], layer: Optional[str], status: Optional[str], config: Config
+        self, frame: Optional[str], time: Optional[str],
+        remaining: Optional[str], mem: Optional[str], layer: Optional[str],
+        status: Optional[str], config: Config
     ) -> None:
         self.frame = frame
         self.time = time

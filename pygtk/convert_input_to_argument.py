@@ -7,7 +7,9 @@ def convert_output_format(output_format: str) -> List[str]:
     return []
 
 
-def convert_animation(output_type: str, start_frame: int, end_frame: int) -> List[str]:
+def convert_animation(
+    output_type: str, start_frame: int, end_frame: int
+) -> List[str]:
     if output_type == "Animation":
         return ["-s", str(start_frame), "-e", str(end_frame)]
     return []
@@ -30,7 +32,8 @@ def convert_render_samples(render_samples: int, render_engine: str) -> str:
         if render_engine == "CYCLES":
             return f"bpy.context.scene.cycles.samples = {render_samples}; "
         elif render_engine == "BLENDER_EEVEE":
-            return f"bpy.context.scene.eevee.taa_render_samples = {render_samples}; "
+            return f"bpy.context.scene.eevee.taa_render_samples " \
+                   f"= {render_samples}; "
     return ""
 
 
@@ -48,5 +51,6 @@ def convert_resolution_y(resolution_y: int) -> str:
 
 def convert_resolution_percentage(resolution_percentage: int) -> str:
     if resolution_percentage != 0:
-        return f"bpy.context.scene.render.resolution_percentage = {resolution_percentage}; "
+        return f"bpy.context.scene.render.resolution_percentage" \
+               f" = {resolution_percentage}; "
     return ""

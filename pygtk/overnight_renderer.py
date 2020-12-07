@@ -12,14 +12,15 @@ import subprocess
 import re
 from typing import Optional, Tuple
 
-from widgets import create_label, create_entry, create_combo_box, create_tree_view, \
-    create_file_chooser_button
+from widgets import create_label, create_entry, create_combo_box, \
+create_tree_view, create_file_chooser_button
 
 from render_task import RenderTask
 
-from convert_input_to_argument import convert_output_format, convert_animation, \
-    convert_render_device, convert_render_samples, convert_resolution_x, \
-    convert_resolution_y, convert_resolution_percentage, convert_single_frame
+from convert_input_to_argument import convert_output_format, \
+    convert_animation, convert_render_device, convert_render_samples, \
+    convert_resolution_x, convert_resolution_y, convert_resolution_percentage, \
+    convert_single_frame
 
 from config import Config, ConfigDialog
 
@@ -82,21 +83,27 @@ class MainWindow(Gtk.Window):
         settings_button.set_tooltip_text("Settings")
         settings_button.connect("clicked", self.on_settings_clicked)
         settings_icon = Gio.ThemedIcon(name="emblem-system-symbolic")
-        settings_image = Gtk.Image.new_from_gicon(settings_icon, Gtk.IconSize.BUTTON)
+        settings_image = Gtk.Image.new_from_gicon(
+            settings_icon, Gtk.IconSize.BUTTON
+        )
         settings_button.add(settings_image)
 
         reload_button = Gtk.Button()
         reload_button.set_tooltip_text("Reload .blend files")
         reload_button.connect("clicked", self.on_reload_clicked)
         reload_icon = Gio.ThemedIcon(name="view-refresh-symbolic")
-        reload_image = Gtk.Image.new_from_gicon(reload_icon, Gtk.IconSize.BUTTON)
+        reload_image = Gtk.Image.new_from_gicon(
+            reload_icon, Gtk.IconSize.BUTTON
+        )
         reload_button.add(reload_image)
 
         self.info_bar = Gtk.InfoBar()
         self.info_bar.set_revealed(False)
         self.info_bar_label = create_label("")
         self.info_bar_label.set_line_wrap(True)
-        self.info_bar.get_content_area().pack_start(self.info_bar_label, True, False, 0)
+        self.info_bar.get_content_area().pack_start(
+            self.info_bar_label, True, False, 0
+        )
 
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         vbox.set_halign(Gtk.Align.CENTER)
@@ -110,21 +117,30 @@ class MainWindow(Gtk.Window):
         header_bar.pack_end(settings_button)
 
         self.blend_files_model = Gtk.TreeStore(str)
-        self.blend_files_tree_view = create_tree_view(self.blend_files_model, ["File"])
+        self.blend_files_tree_view = create_tree_view(
+            self.blend_files_model, ["File"]
+        )
         self.blend_files_tree_view.set_enable_tree_lines(True)
-        self.blend_files_tree_view.connect("button-press-event", self.on_blend_cell_clicked)
+        self.blend_files_tree_view.connect(
+            "button-press-event", self.on_blend_cell_clicked
+        )
 
         blend_files_scrolled = Gtk.ScrolledWindow()
-        blend_files_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        blend_files_scrolled.set_policy(
+            Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
+        )
         blend_files_scrolled.add(self.blend_files_tree_view)
 
         number_entries_tooltip = "0 = Use from .blend file"
 
         blend_file_label = create_label("Path to .blend file")
         self.blend_file_chooser_button = create_file_chooser_button(
-            self, "Select .blend file", Gtk.FileChooserAction.OPEN, Gtk.STOCK_OPEN, True
+            self, "Select .blend file", Gtk.FileChooserAction.OPEN,
+            Gtk.STOCK_OPEN, True
         )
-        self.blend_file_chooser_button.connect("file-set", self.on_blend_file_clicked)
+        self.blend_file_chooser_button.connect(
+            "file-set", self.on_blend_file_clicked
+        )
 
         render_engine_label = create_label("Render Engine")
         engine_store = Gtk.ListStore(str, str)
@@ -156,13 +172,17 @@ class MainWindow(Gtk.Window):
         resolution_percentage_label = create_label("Resolution %")
         self.resolution_percentage_entry = create_entry(True)
         self.resolution_percentage_entry.set_text("0")
-        self.resolution_percentage_entry.set_tooltip_text(number_entries_tooltip)
+        self.resolution_percentage_entry.set_tooltip_text(
+            number_entries_tooltip
+        )
 
         output_type_label = create_label("Output Type")
         output_types = ["Animation", "Single Frame"]
         self.output_type_combo_box = create_combo_box(labels=output_types)
         self.output_type_combo_box.set_active(1)
-        self.output_type_combo_box.connect("changed", self.on_output_type_changed)
+        self.output_type_combo_box.connect(
+            "changed", self.on_output_type_changed
+        )
 
         start_frame_label = create_label("Start Frame")
         self.start_frame_entry = create_entry(True)
@@ -199,7 +219,8 @@ class MainWindow(Gtk.Window):
 
         output_path_label = create_label("Output Path")
         self.output_path_chooser_button = create_file_chooser_button(
-            self, "Select output file directory", Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
+            self, "Select output file directory",
+            Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
         )
 
         python_expressions_label = create_label("Python Expressions")
@@ -220,18 +241,24 @@ class MainWindow(Gtk.Window):
         self.render_tasks_model = Gtk.ListStore(str, str, str, str, int)
         columns = ["File", "Engine", "Type", "Output"]
         queue_tree_view = create_tree_view(self.render_tasks_model, columns)
-        queue_tree_view.connect("key-press-event", self.on_tree_view_key_pressed)
+        queue_tree_view.connect(
+            "key-press-event", self.on_tree_view_key_pressed
+        )
         queue_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
         finished_progress_renderer = Gtk.CellRendererProgress()
-        finished_progress_column = Gtk.TreeViewColumn("Progress", finished_progress_renderer, value=4)
-        finished_progress_column.set_min_width(70)
+        finished_progress_column = Gtk.TreeViewColumn(
+            "Progress", finished_progress_renderer, value=4
+        )
+        finished_progress_column.set_min_width(200)
         queue_tree_view.append_column(finished_progress_column)
 
         grid = Gtk.Grid(column_spacing=12, row_spacing=12)
         grid.set_halign(Gtk.Align.CENTER)
         grid.set_valign(Gtk.Align.CENTER)
 
-        self.stack.add_titled(blend_files_scrolled, "blend_files", "Blend Files")
+        self.stack.add_titled(
+            blend_files_scrolled, "blend_files", "Blend Files"
+        )
         self.stack.add_titled(grid, "render_settings", "Render Settings")
         self.stack.add_titled(queue_tree_view, "queue", "Queue")
 
@@ -277,15 +304,22 @@ class MainWindow(Gtk.Window):
 
         if response == Gtk.ResponseType.APPLY:
             settings = config.settings
-            settings["blender_config"] = config_dialog.blender_config_chooser_button.get_filename()
-            settings["default_output_dir"] = config_dialog.output_dir_chooser_button.get_filename()
-            settings["default_blender_dir"] = config_dialog.default_dir_chooser_button.get_filename()
-            settings["load_render_settings"] = config_dialog.load_render_settings_check_button.get_active()
+            settings["blender_config"] = config_dialog \
+                .blender_config_chooser_button.get_filename()
+            settings["default_output_dir"] = config_dialog \
+                .output_dir_chooser_button.get_filename()
+            settings["default_blender_dir"] = config_dialog \
+                .default_dir_chooser_button.get_filename()
+            settings["load_render_settings"] = config_dialog \
+                .load_render_settings_check_button.get_active()
             for i in range(6):
                 render_info_iter = config_dialog.render_info_model.get_iter(i)
-                settings["render_info"][i]["display_name"] = config_dialog.render_info_model[render_info_iter][0]
-                settings["render_info"][i]["visible"] = config_dialog.render_info_model[render_info_iter][1]
-                settings["render_info"][i]["name"] = config_dialog.render_info_model[render_info_iter][2]
+                settings["render_info"][i]["display_name"] = config_dialog \
+                    .render_info_model[render_info_iter][0]
+                settings["render_info"][i]["visible"] = config_dialog \
+                    .render_info_model[render_info_iter][1]
+                settings["render_info"][i]["name"] = config_dialog \
+                    .render_info_model[render_info_iter][2]
             config.modify(settings)
         elif response == Gtk.ResponseType.CANCEL:
             pass
@@ -299,7 +333,9 @@ class MainWindow(Gtk.Window):
         self.blend_files_model.clear()
 
         try:
-            file = open(f"{config.settings['blender_config']}/recent-files.txt", "r")
+            file = open(
+                f"{config.settings['blender_config']}/recent-files.txt", "r"
+            )
             lines = file.readlines()
             file.close()
 
@@ -311,7 +347,9 @@ class MainWindow(Gtk.Window):
         except IOError:
             pass
 
-        default_dir_files_row = self.blend_files_model.append(None, ["Default Directory"])
+        default_dir_files_row = self.blend_files_model.append(
+            None, ["Default Directory"]
+        )
 
         for dir, _, _ in os.walk(config.settings["default_blender_dir"]):
             files = glob.glob(os.path.join(dir, "*.blend"))
@@ -321,7 +359,9 @@ class MainWindow(Gtk.Window):
 
         self.blend_files_tree_view.expand_all()
 
-    def on_blend_cell_clicked(self, tree_view: Gtk.TreeView, event: Gdk.EventButton) -> None:
+    def on_blend_cell_clicked(
+        self, tree_view: Gtk.TreeView, event: Gdk.EventButton
+    ) -> None:
         if event.button == 1 and event.type == Gdk.EventType._2BUTTON_PRESS:
             selection = tree_view.get_selection()
             model, tree_iter = selection.get_selected()
@@ -336,8 +376,10 @@ class MainWindow(Gtk.Window):
     def set_output_dir(self, path: str) -> None:
         if config.settings["load_render_settings"]:
             self.load_render_settings(path)
-        if self.output_path_chooser_button.get_filename() == "/tmp" or self.output_path_chooser_button.get_filename() is None:
-            self.output_path_chooser_button.set_filename(f"{config.settings['default_output_dir']}")
+        if self.output_path_chooser_button.get_filename() == "/tmp" \
+                or self.output_path_chooser_button.get_filename() is None:
+            self.output_path_chooser_button \
+                .set_filename(f"{config.settings['default_output_dir']}")
 
     def load_render_settings(self, file_path: str) -> None:
         with subprocess.Popen(
@@ -387,7 +429,9 @@ class MainWindow(Gtk.Window):
             self.resolution_percentage_entry.set_text(render_settings[6])
             self.start_frame_entry.set_text(render_settings[7])
             self.end_frame_entry.set_text(render_settings[8])
-            self.output_path_chooser_button.set_filename(os.path.dirname(render_settings[10]))
+            self.output_path_chooser_button.set_filename(
+                os.path.dirname(render_settings[10])
+            )
 
     def on_output_type_changed(self, combo_box: Gtk.ComboBox) -> None:
         output_type_iter = combo_box.get_active_iter()
@@ -404,7 +448,9 @@ class MainWindow(Gtk.Window):
             render_task, render_engine_display = self.create_render_task()
             if render_task.blend_file == "" or render_task.output_file == "":
                 return
-            self.add_render_task_to_tree_view(render_engine_display, render_task)
+            self.add_render_task_to_tree_view(
+                render_engine_display, render_task
+            )
             self.stack.set_visible_child_name("queue")
             self.current_render_task = self.render_queue[0]
         else:
@@ -455,7 +501,10 @@ class MainWindow(Gtk.Window):
         output_format_model = self.output_format_combo_box.get_model()
         output_format = output_format_model[output_format_iter][1]
 
-        output_file = os.path.join(self.output_path_chooser_button.get_filename(), self.output_name_entry.get_text())
+        output_file = os.path.join(
+            self.output_path_chooser_button.get_filename(),
+            self.output_name_entry.get_text()
+        )
 
         python_expressions = self.python_expressions_entry.get_text()
 
@@ -466,11 +515,14 @@ class MainWindow(Gtk.Window):
             python_expressions, False
         ), render_engine_display
 
-    def add_render_task_to_tree_view(self, render_engine_display: str, render_task: RenderTask) -> None:
+    def add_render_task_to_tree_view(
+        self, render_engine_display: str, render_task: RenderTask
+    ) -> None:
         def frames_argument() -> str:
             output_type = render_task.output_type
             if output_type == "Animation":
-                return f"{output_type} ({render_task.start_frame}-{render_task.end_frame})"
+                return f"{output_type}" \
+                       "({render_task.start_frame}-{render_task.end_frame})"
             elif output_type == "Single Frame":
                 return f"{output_type} ({render_task.start_frame})"
 
@@ -490,18 +542,27 @@ class MainWindow(Gtk.Window):
                        "-E", render_task.render_engine,
                        "-o", render_task.output_file,
                    ] + convert_output_format(render_task.output_format) \
-                   + convert_animation(render_task.output_type, render_task.start_frame, render_task.end_frame) \
+                   + convert_animation(
+                       render_task.output_type, render_task.start_frame,
+                       render_task.end_frame
+                   ) \
                    + [
                        "--python-expr",
                        "import bpy; "
                        + convert_render_device(render_task.render_device)
-                       + convert_render_samples(render_task.render_samples, render_task.render_engine)
+                       + convert_render_samples(
+                           render_task.render_samples, render_task.render_engine
+                       )
                        + convert_resolution_x(render_task.resolution_x)
                        + convert_resolution_y(render_task.resolution_y)
-                       + convert_resolution_percentage(render_task.resolution_percentage)
+                       + convert_resolution_percentage(
+                           render_task.resolution_percentage
+                       )
                        + f"{render_task.python_expressions}"
                    ] \
-                   + convert_single_frame(render_task.output_type, render_task.start_frame)
+                   + convert_single_frame(
+                       render_task.output_type, render_task.start_frame
+                   )
         async with await trio.open_process(
             cmd_line,
             stdout=subprocess.PIPE
@@ -526,9 +587,13 @@ class MainWindow(Gtk.Window):
         await self.post_rendering()
 
     def update_progress(self, progress: float) -> None:
-        self.render_tasks_model[self.render_queue.index(self.current_render_task)][4] = progress
+        self.render_tasks_model[
+            self.render_queue.index(self.current_render_task)
+        ][4] = progress
 
-    def parse_blender_logs(self, line: str, end_frame: int) -> Tuple[Optional[RenderInfo], Optional[int]]:
+    def parse_blender_logs(
+        self, line: str, end_frame: int
+    ) -> Tuple[Optional[RenderInfo], Optional[int]]:
         m = re.search(
             r"""
             ^
@@ -566,7 +631,9 @@ class MainWindow(Gtk.Window):
         if status is not None and status.startswith("Rendered "):
             progress = self.parse_status(status, frame, end_frame)
 
-        render_info = RenderInfo(frame, time, remaining, mem, layer, status, config)
+        render_info = RenderInfo(
+            frame, time, remaining, mem, layer, status, config
+        )
         return render_info, progress
 
     def parse_status(self, status: str, frame: str, end_frame: int) -> float:
@@ -595,7 +662,9 @@ class MainWindow(Gtk.Window):
             samples = 1
             total_samples = 1
 
-        frame = int(re.search("^ Fra: (?P<frame> [0-9]+)", frame, flags=re.VERBOSE).group("frame"))
+        frame = int(re.search(
+                "^ Fra: (?P<frame> [0-9]+)", frame, flags=re.VERBOSE
+        ).group("frame"))
 
         if samples == total_samples:
             samples = 0
@@ -608,7 +677,8 @@ class MainWindow(Gtk.Window):
         print("Rendering complete!")
         Notify.init("Overnight Renderer")
         notification = Notify.Notification.new(
-            f"Rendering {os.path.basename(self.current_render_task.blend_file)} finished"
+            "Rendering" \
+            f"{os.path.basename(self.current_render_task.blend_file)} finished"
         )
         notification.show()
 
@@ -637,10 +707,14 @@ class MainWindow(Gtk.Window):
             print("Shutting down...")
             subprocess.run(["poweroff"])
 
-    def on_tree_view_key_pressed(self, tree_view: Gtk.TreeView, event: Gdk.EventKey) -> None:
+    def on_tree_view_key_pressed(
+        self, tree_view: Gtk.TreeView, event: Gdk.EventKey
+    ) -> None:
         keyname = Gdk.keyval_name(event.keyval)
         if keyname == "Delete":
-            del self.render_queue[tree_view.get_selection().get_selected_rows()[1][0][0]]
+            del self.render_queue[
+                tree_view.get_selection().get_selected_rows()[1][0][0]
+            ]
             model, iter = tree_view.get_selection().get_selected()
             model.remove(iter)
 

@@ -119,25 +119,38 @@ class ConfigDialog(Gtk.Dialog):
 
         blender_config_label = create_label("Blender Config Directory")
         self.blender_config_chooser_button = create_file_chooser_button(
-            self, "Select Blender config directory", Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
+            self, "Select Blender config directory",
+            Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
         )
-        self.blender_config_chooser_button.set_filename(self.config.settings["blender_config"])
+        self.blender_config_chooser_button.set_filename(
+            self.config.settings["blender_config"]
+        )
 
         default_dir_label = create_label("Default Blender Directory")
         self.default_dir_chooser_button = create_file_chooser_button(
-            self, "Select default Blender directory", Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
+            self, "Select default Blender directory",
+            Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
         )
-        self.default_dir_chooser_button.set_filename(self.config.settings["default_blender_dir"])
+        self.default_dir_chooser_button.set_filename(
+            self.config.settings["default_blender_dir"]
+        )
 
         output_dir_label = create_label("Default Output Directory")
         self.output_dir_chooser_button = create_file_chooser_button(
-            self, "Select default output directory", Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
+            self, "Select default output directory",
+            Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
         )
-        self.output_dir_chooser_button.set_filename(self.config.settings["default_output_dir"])
+        self.output_dir_chooser_button.set_filename(
+            self.config.settings["default_output_dir"]
+        )
 
-        load_render_settings_label = create_label("Load .blend file render settings")
+        load_render_settings_label = create_label(
+            "Load .blend file render settings"
+        )
         self.load_render_settings_check_button = Gtk.CheckButton()
-        self.load_render_settings_check_button.set_active(self.config.settings["load_render_settings"])
+        self.load_render_settings_check_button.set_active(
+            self.config.settings["load_render_settings"]
+        )
 
         render_info_label = create_label("Render Information")
         self.render_info_model = Gtk.ListStore(str, bool, str)
@@ -149,11 +162,15 @@ class ConfigDialog(Gtk.Dialog):
                     self.config.settings["render_info"][i]["name"]
                 ]
             )
-        self.render_info_tree_view = create_tree_view(self.render_info_model, ["Category"])
+        self.render_info_tree_view = create_tree_view(
+            self.render_info_model, ["Category"]
+        )
         self.render_info_tree_view.set_reorderable(True)
         visible_toggle_renderer = Gtk.CellRendererToggle()
         visible_toggle_renderer.connect("toggled", self.on_cell_toggled)
-        visible_toggle_column = Gtk.TreeViewColumn("Visible", visible_toggle_renderer, active=1)
+        visible_toggle_column = Gtk.TreeViewColumn(
+            "Visible", visible_toggle_renderer, active=1
+        )
         self.render_info_tree_view.append_column(visible_toggle_column)
 
         grid = Gtk.Grid(column_spacing=12, row_spacing=12)
@@ -181,6 +198,8 @@ class ConfigDialog(Gtk.Dialog):
 
         self.show_all()
 
-    def on_cell_toggled(self, cell_renderer_toggle: Gtk.CellRendererToggle, path: str) -> None:
+    def on_cell_toggled(
+        self, cell_renderer_toggle: Gtk.CellRendererToggle, path: str
+    ) -> None:
         self.render_info_model[path][1] = not self.render_info_model[path][1]
 
