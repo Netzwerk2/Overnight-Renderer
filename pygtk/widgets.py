@@ -3,7 +3,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from typing import Union, List
+from typing import List, Optional, Union
 
 
 class NumberEntry(Gtk.Entry):
@@ -69,7 +69,7 @@ def add_blend_filters(dialog: Gtk.FileChooserDialog) -> None:
 
 
 def create_combo_box(
-    model: Gtk.TreeModel = None, labels: List[str] = None
+    model: Optional[Gtk.TreeModel] = None, labels: Optional[List[str]] = None
 ) -> Gtk.ComboBox:
     if model is None:
         model = Gtk.ListStore(str)
