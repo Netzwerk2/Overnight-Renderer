@@ -66,6 +66,8 @@ class MainWindow(Gtk.Window):
         self.set_border_width(20)
         self.set_position(Gtk.WindowPosition.CENTER)
 
+        self.do_post_rendering = True
+
         self.nursery = nursery
 
         self.create_content()
@@ -700,13 +702,34 @@ class MainWindow(Gtk.Window):
         post_rendering = post_rendering_model[post_rendering_iter][0]
 
         if post_rendering == "Suspend":
-            await trio.sleep(30)
-            print("Suspending...")
-            subprocess.run(["systemctl", "suspend"])
+            self.info_bar.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+            self.info_bar.set_message_type(Gtk.MessageType.WARNING)
+            self.info_bar.connect("response", self.on_info_bar_cancel_pressed)
+            self.info_bar.set_revealed(True)
+            for i in range(30):
+                self.info_bar_label.set_text(f"Suspending in {29 - i} s")
+                await trio.sleep(1)
+            if self.do_post_rendering:
+                print("Suspending...")
+                subprocess.run(["systemctl", "suspend"])
         elif post_rendering == "Shutdown":
-            await trio.sleep(30)
-            print("Shutting down...")
-            subprocess.run(["poweroff"])
+            self.info_bar.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+            self.info_bar.set_message_type(Gtk.MessageType.WARNING)
+            self.info_bar.connect("response", self.on_info_bar_cancel_pressed)
+            self.info_bar.set_revealed(True)
+            for i in range(30):
+                self.info_bar_label.set_text(f"Shutting down in {29 - i} s")
+                await trio.sleep(1)
+            if self.do_post_rendering:
+                print("Shutting down...")
+                subprocess.run(["poweroff"])
+
+    def on_info_bar_cancel_pressed(
+        self, info_bar: Gtk.InfoBar, response: Gtk.ResponseType
+    ) -> None:
+        self.do_post_rendering = False
+        self.info_bar.set_revealed(False)
+        self.info_bar.set_message_type(Gtk.MessageType.INFO)
 
     def on_tree_view_key_pressed(
         self, tree_view: Gtk.TreeView, event: Gdk.EventKey
