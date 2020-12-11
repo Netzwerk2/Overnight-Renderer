@@ -451,7 +451,6 @@ class MainWindow(Gtk.Window):
             self.add_render_task_to_tree_view(
                 render_engine_display, render_task
             )
-            self.stack.set_visible_child_name("queue")
             self.current_render_task = self.render_queue[0]
         else:
             for render_task in self.render_queue:
@@ -459,6 +458,8 @@ class MainWindow(Gtk.Window):
                     self.current_render_task = render_task
 
         self.render_button.set_sensitive(False)
+
+        self.stack.set_visible_child_name("queue")
 
         self.nursery.start_soon(self.render, self.current_render_task)
 
