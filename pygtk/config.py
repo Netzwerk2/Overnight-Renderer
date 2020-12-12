@@ -152,7 +152,7 @@ class ConfigDialog(Gtk.Dialog):
             self.config.settings["load_render_settings"]
         )
 
-        render_info_label = create_label("Render Information")
+        render_info_label = create_label("Render Information (Cycles only)")
         self.render_info_model = Gtk.ListStore(str, bool, str)
         for i in range(6):
             self.render_info_model.append(

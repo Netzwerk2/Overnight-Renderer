@@ -571,25 +571,26 @@ class MainWindow(Gtk.Window):
             stdout=subprocess.PIPE
         ) as process:
             self.process = process
-            self.info_bar.set_revealed(True)
-            async for raw_line in process.stdout:
-                line = raw_line.strip().decode("utf-8")
-                parts = line.split("\n")
- 
-                if render_task.output_type == "Animation":
-                    start_frame = self.current_render_task.start_frame
-                    end_frame = self.current_render_task.end_frame
-                else:
-                    start_frame = self.current_render_task.start_frame
-                    end_frame = self.current_render_task.start_frame
-                info, progress = self.parse_blender_logs(
-                    parts[-1], start_frame, end_frame
-                )
+            if render_task.render_engine == "CYCLES":
+                self.info_bar.set_revealed(True)
+                async for raw_line in process.stdout:
+                    line = raw_line.strip().decode("utf-8")
+                    parts = line.split("\n")
 
-                if info is not None:
-                    self.info_bar_label.set_text(str(info))
-                if progress is not None:
-                    self.update_progress(progress)
+                    if render_task.output_type == "Animation":
+                        start_frame = self.current_render_task.start_frame
+                        end_frame = self.current_render_task.end_frame
+                    else:
+                        start_frame = self.current_render_task.start_frame
+                        end_frame = self.current_render_task.start_frame
+                    info, progress = self.parse_blender_logs(
+                        parts[-1], start_frame, end_frame
+                    )
+
+                    if info is not None:
+                        self.info_bar_label.set_text(str(info))
+                    if progress is not None:
+                        self.update_progress(progress)
 
         await self.post_rendering()
 
@@ -690,6 +691,8 @@ class MainWindow(Gtk.Window):
             f"{os.path.basename(self.current_render_task.blend_file)} finished"
         )
         notification.show()
+
+        self.update_progress(100)
 
         self.process = None
         self.current_render_task.finished = True
