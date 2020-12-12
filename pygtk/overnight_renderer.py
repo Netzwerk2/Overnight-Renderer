@@ -525,7 +525,7 @@ class MainWindow(Gtk.Window):
             output_type = render_task.output_type
             if output_type == "Animation":
                 return f"{output_type}" \
-                       "({render_task.start_frame}-{render_task.end_frame})"
+                       f"({render_task.start_frame} - {render_task.end_frame})"
             elif output_type == "Single Frame":
                 return f"{output_type} ({render_task.start_frame})"
 
@@ -577,10 +577,14 @@ class MainWindow(Gtk.Window):
                 parts = line.split("\n")
  
                 if render_task.output_type == "Animation":
+                    start_frame = self.current_render_task.start_frame
                     end_frame = self.current_render_task.end_frame
                 else:
+                    start_frame = self.current_render_task.start_frame
                     end_frame = self.current_render_task.start_frame
-                info, progress = self.parse_blender_logs(parts[-1], end_frame)
+                info, progress = self.parse_blender_logs(
+                    parts[-1], start_frame, end_frame
+                )
 
                 if info is not None:
                     self.info_bar_label.set_text(str(info))
@@ -595,7 +599,7 @@ class MainWindow(Gtk.Window):
         ][4] = progress
 
     def parse_blender_logs(
-        self, line: str, end_frame: int
+        self, line: str, start_frame: int, end_frame: int
     ) -> Tuple[Optional[RenderInfo], Optional[int]]:
         m = re.search(
             r"""
@@ -632,14 +636,16 @@ class MainWindow(Gtk.Window):
             status = payload
 
         if status is not None and status.startswith("Rendered "):
-            progress = self.parse_status(status, frame, end_frame)
+            progress = self.parse_status(status, frame, start_frame, end_frame)
 
         render_info = RenderInfo(
             frame, time, remaining, mem, layer, status, config
         )
         return render_info, progress
 
-    def parse_status(self, status: str, frame: str, end_frame: int) -> float:
+    def parse_status(
+        self, status: str, frame: str, start_frame: int, end_frame: int
+    ) -> float:
         m = re.search(
             r"""
             ^
@@ -673,8 +679,8 @@ class MainWindow(Gtk.Window):
             samples = 0
 
         f_tiles = tiles + samples / total_samples
-        f_frames = frame - 1 + f_tiles / total_tiles
-        return (f_frames / end_frame) * 100
+        f_frames = frame + f_tiles / total_tiles
+        return ((f_frames - start_frame) / (end_frame - start_frame + 1)) * 100
 
     async def post_rendering(self) -> None:
         print("Rendering complete!")
