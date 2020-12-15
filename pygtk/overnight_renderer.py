@@ -157,22 +157,22 @@ class MainWindow(Gtk.Window):
         self.render_device_combo_box = create_combo_box(labels=render_devices)
 
         render_samples_label = create_label("Samples")
-        self.render_samples_entry = create_entry(True)
+        self.render_samples_entry = create_entry(True, 1)
         self.render_samples_entry.set_text("0")
         self.render_samples_entry.set_tooltip_text(number_entries_tooltip)
 
         resolution_x_label = create_label("Resolution X")
-        self.resolution_x_entry = create_entry(True)
+        self.resolution_x_entry = create_entry(True, 4)
         self.resolution_x_entry.set_text("0")
         self.resolution_x_entry.set_tooltip_text(number_entries_tooltip)
 
         resolution_y_label = create_label("Resolution Y")
-        self.resolution_y_entry = create_entry(True)
+        self.resolution_y_entry = create_entry(True, 4)
         self.resolution_y_entry.set_text("0")
         self.resolution_y_entry.set_tooltip_text(number_entries_tooltip)
 
         resolution_percentage_label = create_label("Resolution %")
-        self.resolution_percentage_entry = create_entry(True)
+        self.resolution_percentage_entry = create_entry(True, 1)
         self.resolution_percentage_entry.set_text("0")
         self.resolution_percentage_entry.set_tooltip_text(
             number_entries_tooltip

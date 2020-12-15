@@ -7,13 +7,19 @@ from typing import List, Optional, Union
 
 
 class NumberEntry(Gtk.Entry):
-    def __init__(self):
+    def __init__(self, min_number: Optional[int] = None):
         Gtk.Entry.__init__(self)
+        self.min_number = min_number
         self.connect("changed", self.on_changed)
 
     def on_changed(self, *args) -> None:
         text = self.get_text().strip()
         self.set_text("".join([i for i in text if i in "0123456789"]))
+        if self.min_number is not None:
+            if text == "":
+                text = str(self.min_number)
+            if int(text) != 0 and int(text) < self.min_number:
+                self.set_text(str(self.min_number))
 
 
 def create_label(text: str) -> Gtk.Label:
@@ -22,9 +28,11 @@ def create_label(text: str) -> Gtk.Label:
     return label
 
 
-def create_entry(numbers_only: bool = True) -> Union[NumberEntry, Gtk.Entry]:
+def create_entry(
+    numbers_only: bool = True, min_number: Optional[int] = None
+) -> Union[NumberEntry, Gtk.Entry]:
     if numbers_only:
-        entry = NumberEntry()
+        entry = NumberEntry(min_number)
     else:
         entry = Gtk.Entry()
     entry.set_width_chars(42)
