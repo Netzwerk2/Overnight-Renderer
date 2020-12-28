@@ -41,7 +41,6 @@ class Config:
             "blender_config": config_dir,
             "default_blender_dir": "",
             "default_output_dir": "",
-            "load_render_settings": True,
             "render_info": [
                 {
                     "name": "frame",
@@ -98,7 +97,6 @@ class ConfigDialog(Gtk.Dialog):
     blender_config_chooser_button = None
     default_dir_chooser_button = None
     output_dir_chooser_button = None
-    load_render_settings_check_button = None
     render_info_model = None
     render_info_tree_view = None
 
@@ -144,14 +142,6 @@ class ConfigDialog(Gtk.Dialog):
             self.config.settings["default_output_dir"]
         )
 
-        load_render_settings_label = create_label(
-            "Load .blend file render settings"
-        )
-        self.load_render_settings_check_button = Gtk.CheckButton()
-        self.load_render_settings_check_button.set_active(
-            self.config.settings["load_render_settings"]
-        )
-
         render_info_label = create_label("Render Information (Cycles only)")
         self.render_info_model = Gtk.ListStore(str, bool, str)
         for i in range(6):
@@ -183,8 +173,6 @@ class ConfigDialog(Gtk.Dialog):
         grid.attach(self.default_dir_chooser_button, 1, 1, 1, 1)
         grid.attach(output_dir_label, 0, 2, 1, 1)
         grid.attach(self.output_dir_chooser_button, 1, 2, 1, 1)
-        grid.attach(load_render_settings_label, 0, 3, 1, 1)
-        grid.attach(self.load_render_settings_check_button, 1, 3, 1, 1)
         grid.attach(render_info_label, 0, 4, 1, 1)
         grid.attach(self.render_info_tree_view, 1, 4, 1, 1)
 

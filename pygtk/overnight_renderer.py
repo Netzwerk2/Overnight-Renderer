@@ -313,8 +313,6 @@ class MainWindow(Gtk.Window):
                 .output_dir_chooser_button.get_filename()
             settings["default_blender_dir"] = config_dialog \
                 .default_dir_chooser_button.get_filename()
-            settings["load_render_settings"] = config_dialog \
-                .load_file_info_check_button.get_active()
             for i in range(6):
                 render_info_iter = config_dialog.render_info_model.get_iter(i)
                 settings["render_info"][i]["display_name"] = config_dialog \
@@ -370,15 +368,14 @@ class MainWindow(Gtk.Window):
             model, tree_iter = selection.get_selected()
             path = model[tree_iter][0]
             self.blend_file_chooser_button.set_filename(path)
-            self.set_output_dir(path)
+            self.update_render_settings(path)
             self.stack.set_visible_child_name("render_settings")
 
     def on_blend_file_clicked(self, button: Gtk.FileChooserButton) -> None:
-        self.set_output_dir(button.get_filename())
+        self.update_render_settings(button.get_filename())
 
-    def set_output_dir(self, path: str) -> None:
-        if config.settings["load_render_settings"]:
-            self.load_file_info(path)
+    def update_render_settings(self, path: str) -> None:
+        self.load_file_info(path)
         if self.output_path_chooser_button.get_filename() == "/tmp" \
                 or self.output_path_chooser_button.get_filename() is None:
             self.output_path_chooser_button \
@@ -672,7 +669,6 @@ class MainWindow(Gtk.Window):
 
         layer = layer.split(", ")[1]
         layer_index = self.layers.index(layer)
-        print(f"{layer}: {layer_index}")
 
         f_tiles = tiles + samples / total_samples
         f_layers = layer_index + f_tiles / total_tiles
