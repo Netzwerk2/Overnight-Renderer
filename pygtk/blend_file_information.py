@@ -1,0 +1,15 @@
+import bpy
+
+print("READY")
+print(bpy.context.scene.render.engine)
+print(bpy.context.scene.cycles.device)
+print(bpy.context.scene.cycles.samples)
+print(bpy.context.scene.eevee.taa_render_samples)
+print(bpy.context.scene.render.resolution_x)
+print(bpy.context.scene.render.resolution_y)
+print(bpy.context.scene.render.resolution_percentage)
+print(bpy.context.scene.frame_start)
+print(bpy.context.scene.frame_end)
+print(bpy.context.scene.render.image_settings.file_format)
+print(bpy.context.scene.render.filepath)
+print(f'{", ".join([l.name for l in bpy.context.scene.view_layers])}')
