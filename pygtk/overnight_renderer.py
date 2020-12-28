@@ -10,7 +10,7 @@ import trio
 import trio_gtk
 import subprocess
 import re
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from widgets import create_label, create_entry, create_combo_box, \
 create_tree_view, create_file_chooser_button
@@ -56,6 +56,7 @@ class MainWindow(Gtk.Window):
     queue_button = None
     render_tasks_model = None
 
+    layers = []
     render_queue = []
     current_render_task = None
     process = None
@@ -313,7 +314,7 @@ class MainWindow(Gtk.Window):
             settings["default_blender_dir"] = config_dialog \
                 .default_dir_chooser_button.get_filename()
             settings["load_render_settings"] = config_dialog \
-                .load_render_settings_check_button.get_active()
+                .load_file_info_check_button.get_active()
             for i in range(6):
                 render_info_iter = config_dialog.render_info_model.get_iter(i)
                 settings["render_info"][i]["display_name"] = config_dialog \
@@ -377,36 +378,23 @@ class MainWindow(Gtk.Window):
 
     def set_output_dir(self, path: str) -> None:
         if config.settings["load_render_settings"]:
-            self.load_render_settings(path)
+            self.load_file_info(path)
         if self.output_path_chooser_button.get_filename() == "/tmp" \
                 or self.output_path_chooser_button.get_filename() is None:
             self.output_path_chooser_button \
                 .set_filename(f"{config.settings['default_output_dir']}")
 
-    def load_render_settings(self, file_path: str) -> None:
+    def load_file_info(self, file_path: str) -> None:
         with subprocess.Popen(
             [
                 "blender",
                 "-b", file_path,
-                "--python-expr",
-                "import bpy; "
-                + "print('\\nREADY'); "
-                + "print(bpy.context.scene.render.engine); "
-                + "print(bpy.context.scene.cycles.device); "
-                + "print(bpy.context.scene.cycles.samples); "
-                + "print(bpy.context.scene.eevee.taa_render_samples); "
-                + "print(bpy.context.scene.render.resolution_x); "
-                + "print(bpy.context.scene.render.resolution_y); "
-                + "print(bpy.context.scene.render.resolution_percentage); "
-                + "print(bpy.context.scene.frame_start); "
-                + "print(bpy.context.scene.frame_end); "
-                + "print(bpy.context.scene.render.image_settings.file_format); "
-                + "print(bpy.context.scene.render.filepath); "
+                "-P", "blend_file_information.py",
             ],
             stdout=subprocess.PIPE
         ) as process:
             output = process.stdout
-            render_settings = []
+            file_info = []
             ready = False
             for raw_line in output:
                 line = raw_line.strip().decode("utf-8")
@@ -414,26 +402,28 @@ class MainWindow(Gtk.Window):
                     ready = True
                     continue
                 if ready:
-                    render_settings.append(line)
+                    file_info.append(line)
 
-            if render_settings[0] == "BLENDER_EEVEE":
+            if file_info[0] == "BLENDER_EEVEE":
                 self.render_engine_combo_box.set_active(0)
-                self.render_samples_entry.set_text(render_settings[3])
-            elif render_settings[0] == "CYCLES":
+                self.render_samples_entry.set_text(file_info[3])
+            elif file_info[0] == "CYCLES":
                 self.render_engine_combo_box.set_active(2)
-                self.render_samples_entry.set_text(render_settings[2])
-            if render_settings[1] == "CPU":
+                self.render_samples_entry.set_text(file_info[2])
+            if file_info[1] == "CPU":
                 self.render_device_combo_box.set_active(1)
-            elif render_settings[1] == "GPU":
+            elif file_info[1] == "GPU":
                 self.render_device_combo_box.set_active(2)
-            self.resolution_x_entry.set_text(render_settings[4])
-            self.resolution_y_entry.set_text(render_settings[5])
-            self.resolution_percentage_entry.set_text(render_settings[6])
-            self.start_frame_entry.set_text(render_settings[7])
-            self.end_frame_entry.set_text(render_settings[8])
+            self.resolution_x_entry.set_text(file_info[4])
+            self.resolution_y_entry.set_text(file_info[5])
+            self.resolution_percentage_entry.set_text(file_info[6])
+            self.start_frame_entry.set_text(file_info[7])
+            self.end_frame_entry.set_text(file_info[8])
             self.output_path_chooser_button.set_filename(
-                os.path.dirname(render_settings[10])
+                os.path.dirname(file_info[10])
             )
+            layers = file_info[11].split(", ")
+            self.layers = layers
 
     def on_output_type_changed(self, combo_box: Gtk.ComboBox) -> None:
         output_type_iter = combo_box.get_active_iter()
@@ -599,9 +589,7 @@ class MainWindow(Gtk.Window):
             self.render_queue.index(self.current_render_task)
         ][4] = progress
 
-    def parse_blender_logs(
-        self, line: str, start_frame: int, end_frame: int
-    ) -> Tuple[Optional[RenderInfo], Optional[int]]:
+    def parse_blender_logs(self, line: str, start_frame: int, end_frame: int) -> Tuple[Optional[RenderInfo], Optional[int]]:
         m = re.search(
             r"""
             ^
@@ -637,7 +625,9 @@ class MainWindow(Gtk.Window):
             status = payload
 
         if status is not None and status.startswith("Rendered "):
-            progress = self.parse_status(status, frame, start_frame, end_frame)
+            progress = self.parse_status(
+                status, frame, start_frame, end_frame, layer
+            )
 
         render_info = RenderInfo(
             frame, time, remaining, mem, layer, status, config
@@ -645,7 +635,8 @@ class MainWindow(Gtk.Window):
         return render_info, progress
 
     def parse_status(
-        self, status: str, frame: str, start_frame: int, end_frame: int
+        self, status: str, frame: str, start_frame: int, end_frame:
+        int, layer: str
     ) -> float:
         m = re.search(
             r"""
@@ -679,9 +670,14 @@ class MainWindow(Gtk.Window):
         if samples == total_samples:
             samples = 0
 
+        layer = layer.split(", ")[1]
+        layer_index = self.layers.index(layer)
+        print(f"{layer}: {layer_index}")
+
         f_tiles = tiles + samples / total_samples
-        f_frames = frame + f_tiles / total_tiles
-        return ((f_frames - start_frame) / (end_frame - start_frame + 1)) * 100
+        f_layers = layer_index + f_tiles / total_tiles
+        f_frames = frame + f_layers / len(self.layers)
+        return (f_frames - start_frame) / (end_frame - start_frame + 1) * 100
 
     async def post_rendering(self) -> None:
         print("Rendering complete!")
