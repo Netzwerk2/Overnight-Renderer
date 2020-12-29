@@ -404,6 +404,8 @@ class MainWindow(Gtk.Window):
             if file_info[0] == "BLENDER_EEVEE":
                 self.render_engine_combo_box.set_active(0)
                 self.render_samples_entry.set_text(file_info[3])
+            elif file_info[0] == "BLENDER_WORKBENCH":
+                self.render_engine_combo_box.set_active(1)
             elif file_info[0] == "CYCLES":
                 self.render_engine_combo_box.set_active(2)
                 self.render_samples_entry.set_text(file_info[2])
@@ -558,26 +560,25 @@ class MainWindow(Gtk.Window):
             stdout=subprocess.PIPE
         ) as process:
             self.process = process
-            if render_task.render_engine == "CYCLES":
-                self.info_bar.set_revealed(True)
-                async for raw_line in process.stdout:
-                    line = raw_line.strip().decode("utf-8")
-                    parts = line.split("\n")
+            self.info_bar.set_revealed(True)
+            async for raw_line in process.stdout:
+                line = raw_line.strip().decode("utf-8")
+                parts = line.split("\n")
 
-                    if render_task.output_type == "Animation":
-                        start_frame = self.current_render_task.start_frame
-                        end_frame = self.current_render_task.end_frame
-                    else:
-                        start_frame = self.current_render_task.start_frame
-                        end_frame = self.current_render_task.start_frame
-                    info, progress = self.parse_blender_logs(
-                        parts[-1], start_frame, end_frame
-                    )
+                if render_task.output_type == "Animation":
+                    start_frame = self.current_render_task.start_frame
+                    end_frame = self.current_render_task.end_frame
+                else:
+                    start_frame = self.current_render_task.start_frame
+                    end_frame = self.current_render_task.start_frame
+                info, progress = self.parse_blender_logs(
+                    parts[-1], start_frame, end_frame
+                )
 
-                    if info is not None:
-                        self.info_bar_label.set_text(str(info))
-                    if progress is not None:
-                        self.update_progress(progress)
+                if info is not None:
+                    self.info_bar_label.set_text(str(info))
+                if progress is not None:
+                    self.update_progress(progress)
 
         await self.post_rendering()
 
@@ -621,10 +622,17 @@ class MainWindow(Gtk.Window):
         elif payload.startswith("Compositing"):
             status = payload
 
-        if status is not None and status.startswith("Rendered "):
-            progress = self.parse_status(
-                status, frame, start_frame, end_frame, layer
-            )
+        if self.current_render_task.render_engine == "CYCLES":
+            if status is not None and status.startswith("Rendered "):
+                progress = self.parse_status(
+                    status, frame, start_frame, end_frame, layer
+                )
+        else:
+            i_frame = int(re.search(
+                "^ Fra: (?P<frame> [0-9]+)", frame, flags=re.VERBOSE
+            ).group("frame"))
+            progress = (i_frame - start_frame) / (end_frame - start_frame + 1) * 100
+
 
         render_info = RenderInfo(
             frame, time, remaining, mem, layer, status, config
@@ -661,7 +669,7 @@ class MainWindow(Gtk.Window):
             total_samples = 1
 
         frame = int(re.search(
-                "^ Fra: (?P<frame> [0-9]+)", frame, flags=re.VERBOSE
+            "^ Fra: (?P<frame> [0-9]+)", frame, flags=re.VERBOSE
         ).group("frame"))
 
         if samples == total_samples:
