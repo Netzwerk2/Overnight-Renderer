@@ -500,11 +500,13 @@ class MainWindow(Gtk.Window):
 
         python_expressions = self.python_expressions_entry.get_text()
 
+        layers = self.layers
+
         return RenderTask(
             blend_file, render_engine, render_device, render_samples,
             resolution_x, resolution_y, resolution_percentage, output_type,
             start_frame, end_frame, output_format, output_file,
-            python_expressions, False
+            python_expressions, layers, False
         ), render_engine_display
 
     def add_render_task_to_tree_view(
@@ -587,7 +589,9 @@ class MainWindow(Gtk.Window):
             self.render_queue.index(self.current_render_task)
         ][4] = progress
 
-    def parse_blender_logs(self, line: str, start_frame: int, end_frame: int) -> Tuple[Optional[RenderInfo], Optional[int]]:
+    def parse_blender_logs(
+        self, line: str, start_frame: int, end_frame: int
+    ) -> Tuple[Optional[RenderInfo], Optional[int]]:
         m = re.search(
             r"""
             ^
@@ -631,8 +635,8 @@ class MainWindow(Gtk.Window):
             i_frame = int(re.search(
                 "^ Fra: (?P<frame> [0-9]+)", frame, flags=re.VERBOSE
             ).group("frame"))
-            progress = (i_frame - start_frame) / (end_frame - start_frame + 1) * 100
-
+            progress = (i_frame - start_frame) \
+                / (end_frame - start_frame + 1) * 100
 
         render_info = RenderInfo(
             frame, time, remaining, mem, layer, status, config
@@ -640,8 +644,8 @@ class MainWindow(Gtk.Window):
         return render_info, progress
 
     def parse_status(
-        self, status: str, frame: str, start_frame: int, end_frame:
-        int, layer: str
+        self, status: str, frame: str, start_frame: int, end_frame: int,
+        layer: str
     ) -> float:
         m = re.search(
             r"""
@@ -676,18 +680,18 @@ class MainWindow(Gtk.Window):
             samples = 0
 
         layer = layer.split(", ")[1]
-        layer_index = self.layers.index(layer)
+        layer_index = self.current_render_task.layers.index(layer)
 
         f_tiles = tiles + samples / total_samples
         f_layers = layer_index + f_tiles / total_tiles
-        f_frames = frame + f_layers / len(self.layers)
+        f_frames = frame + f_layers / len(self.current_render_task.layers)
         return (f_frames - start_frame) / (end_frame - start_frame + 1) * 100
 
     async def post_rendering(self) -> None:
         print("Rendering complete!")
         Notify.init("Overnight Renderer")
         notification = Notify.Notification.new(
-            "Rendering" \
+            "Rendering " \
             f"{os.path.basename(self.current_render_task.blend_file)} finished"
         )
         notification.show()

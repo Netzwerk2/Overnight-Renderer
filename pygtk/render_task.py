@@ -1,10 +1,12 @@
+from typing import List
+
 class RenderTask:
     def __init__(
         self, blend_file: str, render_engine: str, render_device: str,
         render_samples: int, resolution_x: int, resolution_y: int,
         resolution_percentage: int, output_type: str, start_frame: int,
         end_frame: int, output_format: str, output_file: str,
-        python_expressions: str, finished: bool
+        python_expressions: str, layers: List[str], finished: bool
     ) -> None:
         self.blend_file = blend_file
         self.render_engine = render_engine
@@ -19,4 +21,5 @@ class RenderTask:
         self.output_format = output_format
         self.output_file = output_file
         self.python_expressions = python_expressions
+        self.layers = layers
         self.finished = finished
