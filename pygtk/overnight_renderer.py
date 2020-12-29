@@ -235,17 +235,15 @@ class MainWindow(Gtk.Window):
             labels=post_rendering_options
         )
 
-        self.render_button = Gtk.Button(label="Render")
-        self.render_button.connect("clicked", self.on_render_clicked)
-
         self.queue_button = Gtk.Button(label="Queue")
+        self.queue_button.get_style_context().add_class("suggested-action")
         self.queue_button.connect("clicked", self.on_queue_clicked)
 
         self.render_tasks_model = Gtk.ListStore(str, str, str, str, int)
         columns = ["File", "Engine", "Type", "Output"]
         queue_tree_view = create_tree_view(self.render_tasks_model, columns)
         queue_tree_view.connect(
-            "key-press-event", self.on_tree_view_key_pressed
+            "key-press-event", self.on_queue_tree_view_key_pressed
         )
         queue_tree_view.set_grid_lines(Gtk.TreeViewGridLines.VERTICAL)
         finished_progress_renderer = Gtk.CellRendererProgress()
@@ -255,16 +253,20 @@ class MainWindow(Gtk.Window):
         finished_progress_column.set_min_width(200)
         queue_tree_view.append_column(finished_progress_column)
 
+        self.render_button = Gtk.Button(label="Render")
+        self.render_button.set_sensitive(False)
+        self.render_button.set_size_request(0, 0)
+        self.render_button.get_style_context().add_class("suggested-action")
+        self.render_button.connect("clicked", self.on_render_clicked)
+
+        queue_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        queue_vbox.set_halign(Gtk.Align.CENTER)
+        queue_vbox.pack_start(queue_tree_view, True, True, 6)
+        queue_vbox.pack_start(self.render_button, False, False, 6)
+
         grid = Gtk.Grid(column_spacing=12, row_spacing=12)
         grid.set_halign(Gtk.Align.CENTER)
         grid.set_valign(Gtk.Align.CENTER)
-
-        self.stack.add_titled(
-            blend_files_scrolled, "blend_files", "Blend Files"
-        )
-        self.stack.add_titled(grid, "render_settings", "Render Settings")
-        self.stack.add_titled(queue_tree_view, "queue", "Queue")
-
         grid.attach(blend_file_label, 0, 0, 1, 1)
         grid.attach(self.blend_file_chooser_button, 1, 0, 1, 1)
         grid.attach(render_engine_label, 0, 1, 1, 1)
@@ -295,8 +297,13 @@ class MainWindow(Gtk.Window):
         grid.attach(self.python_expressions_entry, 1, 13, 1, 1)
         grid.attach(post_rendering_label, 0, 14, 1, 1)
         grid.attach(self.post_rendering_combo_box, 1, 14, 1, 1)
-        grid.attach(self.render_button, 1, 15, 1, 1)
-        grid.attach(self.queue_button, 1, 16, 1, 1)
+        grid.attach(self.queue_button, 1, 15, 1, 1)
+
+        self.stack.add_titled(
+            blend_files_scrolled, "blend_files", "Blend Files"
+        )
+        self.stack.add_titled(grid, "render_settings", "Render Settings")
+        self.stack.add_titled(queue_vbox, "queue", "Queue")
 
         self.set_titlebar(header_bar)
         self.add(vbox)
@@ -435,18 +442,10 @@ class MainWindow(Gtk.Window):
             self.end_frame_entry.set_sensitive(False)
 
     def on_render_clicked(self, button: Gtk.Button) -> None:
-        if len(self.render_queue) == 0:
-            render_task, render_engine_display = self.create_render_task()
-            if render_task.blend_file == "" or render_task.output_file == "":
-                return
-            self.add_render_task_to_tree_view(
-                render_engine_display, render_task
-            )
-            self.current_render_task = self.render_queue[0]
-        else:
-            for render_task in self.render_queue:
-                if not render_task.finished:
-                    self.current_render_task = render_task
+        for render_task in self.render_queue:
+            if not render_task.finished:
+                self.current_render_task = render_task
+                break
 
         self.render_button.set_sensitive(False)
 
@@ -459,6 +458,8 @@ class MainWindow(Gtk.Window):
         if render_task.blend_file == "" or render_task.output_file == "":
             return
         self.add_render_task_to_tree_view(render_engine_display, render_task)
+        if self.process is None:
+            self.render_button.set_sensitive(True)
         self.stack.set_visible_child_name("queue")
 
     def create_render_task(self) -> Tuple[RenderTask, str]:
@@ -707,7 +708,6 @@ class MainWindow(Gtk.Window):
                 self.nursery.start_soon(self.render, self.current_render_task)
                 return
 
-        self.render_button.set_sensitive(True)
         self.info_bar.set_revealed(False)
 
         post_rendering_iter = self.post_rendering_combo_box.get_active_iter()
@@ -744,14 +744,18 @@ class MainWindow(Gtk.Window):
         self.info_bar.set_revealed(False)
         self.info_bar.set_message_type(Gtk.MessageType.INFO)
 
-    def on_tree_view_key_pressed(
+    def on_queue_tree_view_key_pressed(
         self, tree_view: Gtk.TreeView, event: Gdk.EventKey
     ) -> None:
         keyname = Gdk.keyval_name(event.keyval)
-        if keyname == "Delete":
-            del self.render_queue[
-                tree_view.get_selection().get_selected_rows()[1][0][0]
-            ]
+        render_task_index = tree_view.get_selection() \
+            .get_selected_rows()[1][0][0]
+        current_render_task_index = self.render_queue.index(
+            self.current_render_task
+        )
+        if keyname == "Delete" \
+                and render_task_index != current_render_task_index:
+            del self.render_queue[render_task_index]
             model, iter = tree_view.get_selection().get_selected()
             model.remove(iter)
 
