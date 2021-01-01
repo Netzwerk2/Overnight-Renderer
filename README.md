@@ -11,7 +11,7 @@ This is a GUI application for rendering Blender projects overnight.
 - Define default directory for Blender projects
 - List recent Blender files
 
-## Requirements:
+## Requirements
 - Python 3.6 or newer
 - PyGObject
 - GTK 3
