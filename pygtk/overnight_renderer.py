@@ -533,6 +533,7 @@ class MainWindow(Gtk.Window):
         self.render_queue.append(render_task)
 
     async def render(self, render_task: RenderTask) -> None:
+        image_path = None
         cmd_line = [
                        "blender",
                        "-b", render_task.blend_file,
@@ -585,7 +586,15 @@ class MainWindow(Gtk.Window):
                 if progress is not None:
                     self.update_progress(progress)
 
-        await self.post_rendering()
+                m = re.search(
+                    "^Saved: \s '(?P<path>.*)'",
+                    line,
+                    flags=re.VERBOSE
+                )
+                if m:
+                    image_path = m.group("path")
+
+        await self.post_rendering(image_path)
 
     def update_progress(self, progress: float) -> None:
         self.render_tasks_model[
@@ -690,13 +699,24 @@ class MainWindow(Gtk.Window):
         f_frames = frame + f_layers / len(self.current_render_task.layers)
         return (f_frames - start_frame) / (end_frame - start_frame + 1) * 100
 
-    async def post_rendering(self) -> None:
+    async def post_rendering(self, image_path: Optional[str]) -> None:
         print("Rendering complete!")
         Notify.init("Overnight Renderer")
-        notification = Notify.Notification.new(
-            "Rendering " \
-            f"{os.path.basename(self.current_render_task.blend_file)} finished"
-        )
+        if image_path is not None:
+            notification = Notify.Notification.new(
+                "Rendering complete",
+                "Rendering "\
+                f"{os.path.basename(self.current_render_task.blend_file)} " \
+                "finished",
+                image_path
+            )
+        else:
+            notification = Notify.Notification.new(
+                "Rendering complete",
+                "Rendering " \
+                f"{os.path.basename(self.current_render_task.blend_file)} " \
+                "finished"
+            )
         notification.show()
 
         self.update_progress(100)
