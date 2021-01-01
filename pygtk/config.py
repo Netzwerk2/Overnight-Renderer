@@ -124,9 +124,9 @@ class ConfigDialog(Gtk.Dialog):
             self.config.settings["blender_config"]
         )
 
-        default_dir_label = create_label("Default Blender Directory")
+        default_dir_label = create_label("Default Blender Project Directory")
         self.default_dir_chooser_button = create_file_chooser_button(
-            self, "Select default Blender directory",
+            self, "Select default Blender project directory",
             Gtk.FileChooserAction.SELECT_FOLDER, Gtk.STOCK_OPEN, False
         )
         self.default_dir_chooser_button.set_filename(
