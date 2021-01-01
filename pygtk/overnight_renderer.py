@@ -393,7 +393,7 @@ class MainWindow(Gtk.Window):
             [
                 "blender",
                 "-b", file_path,
-                "-P", "blend_file_information.py",
+                "-P", os.path.abspath("blend_file_information.py"),
             ],
             stdout=subprocess.PIPE
         ) as process:
