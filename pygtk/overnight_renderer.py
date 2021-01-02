@@ -322,6 +322,8 @@ class MainWindow(Gtk.Window):
                 .output_dir_chooser_button.get_filename()
             settings["default_blender_dir"] = config_dialog \
                 .default_dir_chooser_button.get_filename()
+            settings["post_rendering_timer"] = config_dialog \
+                .post_rendering_spin.get_value_as_int()
             for i in range(6):
                 render_info_iter = config_dialog.render_info_model.get_iter(i)
                 settings["render_info"][i]["display_name"] = config_dialog \
@@ -736,13 +738,15 @@ class MainWindow(Gtk.Window):
         post_rendering_model = self.post_rendering_combo_box.get_model()
         post_rendering = post_rendering_model[post_rendering_iter][0]
 
+        timer = config.settings["post_rendering_timer"]
+
         if post_rendering == "Suspend":
             self.info_bar.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
             self.info_bar.set_message_type(Gtk.MessageType.WARNING)
             self.info_bar.connect("response", self.on_info_bar_cancel_pressed)
             self.info_bar.set_revealed(True)
-            for i in range(30):
-                self.info_bar_label.set_text(f"Suspending in {29 - i} s")
+            for i in range(timer):
+                self.info_bar_label.set_text(f"Suspending in {timer - i} s")
                 await trio.sleep(1)
             if self.do_post_rendering:
                 print("Suspending...")
@@ -752,8 +756,8 @@ class MainWindow(Gtk.Window):
             self.info_bar.set_message_type(Gtk.MessageType.WARNING)
             self.info_bar.connect("response", self.on_info_bar_cancel_pressed)
             self.info_bar.set_revealed(True)
-            for i in range(30):
-                self.info_bar_label.set_text(f"Shutting down in {29 - i} s")
+            for i in range(timer):
+                self.info_bar_label.set_text(f"Shutting down in {timer - i} s")
                 await trio.sleep(1)
             if self.do_post_rendering:
                 print("Shutting down...")

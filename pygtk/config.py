@@ -41,6 +41,7 @@ class Config:
             "blender_config": config_dir,
             "default_blender_dir": "",
             "default_output_dir": "",
+            "post_rendering_timer": 30,
             "render_info": [
                 {
                     "name": "frame",
@@ -78,8 +79,7 @@ class Config:
         return Config(settings)
 
     def create_from_file(path: str) -> "Config":
-        file = open(path, "r")
-        data = file.read()
+        data = open(path, "r").read()
         settings = toml.loads(data)
         return Config(settings)
 
@@ -97,6 +97,7 @@ class ConfigDialog(Gtk.Dialog):
     blender_config_chooser_button = None
     default_dir_chooser_button = None
     output_dir_chooser_button = None
+    post_rendering_spin = None
     render_info_model = None
     render_info_tree_view = None
 
@@ -142,6 +143,17 @@ class ConfigDialog(Gtk.Dialog):
             self.config.settings["default_output_dir"]
         )
 
+        post_rendering_label = create_label("Post Rendering Timer")
+        post_rendering_adjustment = Gtk.Adjustment(
+            upper=600, step_increment=1, page_increment=10
+        )
+        self.post_rendering_spin = Gtk.SpinButton()
+        self.post_rendering_spin.set_adjustment(post_rendering_adjustment)
+        self.post_rendering_spin.set_value(
+            self.config.settings["post_rendering_timer"]
+        )
+        self.post_rendering_spin.connect("output", self.on_output)
+
         render_info_label = create_label("Render Information (Cycles only)")
         self.render_info_model = Gtk.ListStore(str, bool, str)
         for i in range(6):
@@ -173,8 +185,10 @@ class ConfigDialog(Gtk.Dialog):
         grid.attach(self.default_dir_chooser_button, 1, 1, 1, 1)
         grid.attach(output_dir_label, 0, 2, 1, 1)
         grid.attach(self.output_dir_chooser_button, 1, 2, 1, 1)
-        grid.attach(render_info_label, 0, 4, 1, 1)
-        grid.attach(self.render_info_tree_view, 1, 4, 1, 1)
+        grid.attach(post_rendering_label, 0, 4, 1, 1)
+        grid.attach(self.post_rendering_spin, 1, 4, 1, 1)
+        grid.attach(render_info_label, 0, 5, 1, 1)
+        grid.attach(self.render_info_tree_view, 1, 5, 1, 1)
 
         self.set_titlebar(header_bar)
         self.get_content_area().add(grid)
@@ -190,4 +204,8 @@ class ConfigDialog(Gtk.Dialog):
         self, cell_renderer_toggle: Gtk.CellRendererToggle, path: str
     ) -> None:
         self.render_info_model[path][1] = not self.render_info_model[path][1]
+
+    def on_output(self, spin_button: Gtk.SpinButton) -> bool:
+        spin_button.set_text(f"{spin_button.get_value_as_int()} s")
+        return True
 
