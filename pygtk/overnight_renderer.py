@@ -461,7 +461,7 @@ class MainWindow(Gtk.Window):
 
         self.stack.set_visible_child_name("queue")
 
-        self.nursery.start_soon(self.render, self.current_render_task)
+        self.nursery.start_soon(self.render)
 
     def on_queue_clicked(self, button: Gtk.Button) -> None:
         render_task, render_engine_display = self.create_render_task()
@@ -542,34 +542,37 @@ class MainWindow(Gtk.Window):
         ])
         self.render_queue.append(render_task)
 
-    async def render(self, render_task: RenderTask) -> None:
+    async def render(self) -> None:
         image_path = None
         cmd_line = [
             "blender",
-            "-b", render_task.blend_file,
-            "-E", render_task.render_engine,
-            "-o", render_task.output_file,
-        ] + convert_output_format(render_task.output_format) \
+            "-b", self.current_render_task.blend_file,
+            "-E", self.current_render_task.render_engine,
+            "-o", self.current_render_task.output_file,
+        ] + convert_output_format(self.current_render_task.output_format) \
             + convert_animation(
-                render_task.output_type, render_task.start_frame,
-                render_task.end_frame
+                self.current_render_task.output_type,
+                self.current_render_task.start_frame,
+                self.current_render_task.end_frame
            ) \
             + [
                 "--python-expr",
                 "import bpy; "
-                + convert_render_device(render_task.render_device)
+                + convert_render_device(self.current_render_task.render_device)
                 + convert_render_samples(
-                    render_task.render_samples, render_task.render_engine
+                    self.current_render_task.render_samples,
+                    self.current_render_task.render_engine
                 )
-                + convert_resolution_x(render_task.resolution_x)
-                + convert_resolution_y(render_task.resolution_y)
+                + convert_resolution_x(self.current_render_task.resolution_x)
+                + convert_resolution_y(self.current_render_task.resolution_y)
                 + convert_resolution_percentage(
-                    render_task.resolution_percentage
+                    self.current_render_task.resolution_percentage
                 )
-                + f"{render_task.python_expressions}"
+                + f"{self.current_render_task.python_expressions}"
             ] \
             + convert_single_frame(
-                render_task.output_type, render_task.start_frame
+                self.current_render_task.output_type,
+                self.current_render_task.start_frame
             )
         async with await trio.open_process(
             cmd_line,
@@ -581,7 +584,7 @@ class MainWindow(Gtk.Window):
                 line = raw_line.strip().decode("utf-8")
                 parts = line.split("\n")
 
-                if render_task.output_type == "Animation":
+                if self.current_render_task.output_type == "Animation":
                     start_frame = self.current_render_task.start_frame
                     end_frame = self.current_render_task.end_frame
                 else:
