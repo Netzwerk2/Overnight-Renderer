@@ -13,7 +13,7 @@ import trio  # noqa: E402
 import trio_gtk  # noqa: E402
 import subprocess  # noqa: E402
 import re  # noqa: E402
-from typing import Optional, Tuple  # noqa: E402
+from typing import List, Optional, Tuple  # noqa: E402
 
 from widgets import create_label, create_entry, create_combo_box, \
     create_tree_view, create_file_chooser_button  # noqa: E402
@@ -36,34 +36,34 @@ config: Optional[Config] = None
 
 
 class MainWindow(Gtk.Window):
-    stack = None
-    info_bar = None
-    info_bar_label = None
-    blend_files_tree_view = None
-    blend_files_model = None
-    blend_file_chooser_button = None
-    render_engine_combo_box = None
-    render_device_combo_box = None
-    render_samples_entry = None
-    resolution_x_entry = None
-    resolution_y_entry = None
-    resolution_percentage_entry = None
-    output_type_combo_box = None
-    start_frame_entry = None
-    end_frame_entry = None
-    output_format_combo_box = None
-    output_name_entry = None
-    output_path_chooser_button = None
-    python_expressions_entry = None
-    post_rendering_combo_box = None
-    render_button = None
-    queue_button = None
-    render_tasks_model = None
+    stack: Gtk.Stack = None
+    info_bar: Gtk.InfoBar = None
+    info_bar_label: Gtk.Label = None
+    blend_files_tree_view: Gtk.TreeView = None
+    blend_files_store: Gtk.TreeStore = None
+    blend_file_chooser_button: Gtk.FileChooserButton = None
+    render_engine_combo_box: Gtk.ComboBox = None
+    render_device_combo_box: Gtk.ComboBox = None
+    render_samples_entry: Gtk.Entry = None
+    resolution_x_entry: Gtk.Entry = None
+    resolution_y_entry: Gtk.Entry = None
+    resolution_percentage_entry: Gtk.Entry = None
+    output_type_combo_box: Gtk.ComboBox = None
+    start_frame_entry: Gtk.Entry = None
+    end_frame_entry: Gtk.Entry = None
+    output_format_combo_box: Gtk.ComboBox = None
+    output_name_entry: Gtk.Entry = None
+    output_path_chooser_button: Gtk.FileChooserButton = None
+    python_expressions_entry: Gtk.Entry = None
+    post_rendering_combo_box: Gtk.ComboBox = None
+    render_button: Gtk.Button = None
+    queue_button: Gtk.Button = None
+    render_tasks_store: Gtk.ListStore = None
 
-    layers = []
-    render_queue = []
-    current_render_task = None
-    process = None
+    layers: List[str] = []
+    render_queue: List[RenderTask] = []
+    current_render_task: Optional[RenderTask] = None
+    process: Optional[trio.Process] = None
 
     def __init__(self, nursery: trio.Nursery) -> None:
         super(MainWindow, self).__init__()
@@ -125,9 +125,9 @@ class MainWindow(Gtk.Window):
         header_bar.pack_start(reload_button)
         header_bar.pack_end(settings_button)
 
-        self.blend_files_model = Gtk.TreeStore(str)
+        self.blend_files_store = Gtk.TreeStore(str)
         self.blend_files_tree_view = create_tree_view(
-            self.blend_files_model, ["File"]
+            self.blend_files_store, ["File"]
         )
         self.blend_files_tree_view.set_enable_tree_lines(True)
         self.blend_files_tree_view.connect(
@@ -157,7 +157,7 @@ class MainWindow(Gtk.Window):
         engine_store.append(["Workbench", "BLENDER_WORKBENCH"])
         engine_store.append(["Cycles", "CYCLES"])
 
-        self.render_engine_combo_box = create_combo_box(model=engine_store)
+        self.render_engine_combo_box = create_combo_box(store=engine_store)
 
         render_device_label = create_label("Cycles Render Device")
         render_devices = [".blend file", "CPU", "GPU"]
@@ -220,7 +220,7 @@ class MainWindow(Gtk.Window):
         format_store.append(["AVI JPEG", "AVIJPEG"])
         format_store.append(["AVI Raw", "AVIRAW"])
         format_store.append(["FFmpeg video", "MPEG"])
-        self.output_format_combo_box = create_combo_box(model=format_store)
+        self.output_format_combo_box = create_combo_box(store=format_store)
 
         output_name_label = create_label("Output Name")
         self.output_name_entry = create_entry(False)
@@ -245,9 +245,9 @@ class MainWindow(Gtk.Window):
         self.queue_button.get_style_context().add_class("suggested-action")
         self.queue_button.connect("clicked", self.on_queue_clicked)
 
-        self.render_tasks_model = Gtk.ListStore(str, str, str, str, int)
+        self.render_tasks_store = Gtk.ListStore(str, str, str, str, int)
         columns = ["File", "Engine", "Type", "Output"]
-        queue_tree_view = create_tree_view(self.render_tasks_model, columns)
+        queue_tree_view = create_tree_view(self.render_tasks_store, columns)
         queue_tree_view.connect(
             "key-press-event", self.on_queue_tree_view_key_pressed
         )
@@ -346,7 +346,7 @@ class MainWindow(Gtk.Window):
         self.load_blend_files()
 
     def load_blend_files(self) -> None:
-        self.blend_files_model.clear()
+        self.blend_files_store.clear()
 
         try:
             file = open(
@@ -355,15 +355,15 @@ class MainWindow(Gtk.Window):
             lines = file.readlines()
             file.close()
 
-            recent_files_row = self.blend_files_model.append(None, ["Recent"])
+            recent_files_row = self.blend_files_store.append(None, ["Recent"])
 
             for line in lines:
                 path = line.strip()
-                self.blend_files_model.append(recent_files_row, [path])
+                self.blend_files_store.append(recent_files_row, [path])
         except IOError:
             pass
 
-        default_dir_files_row = self.blend_files_model.append(
+        default_dir_files_row = self.blend_files_store.append(
             None, ["Default Directory"]
         )
 
@@ -371,7 +371,7 @@ class MainWindow(Gtk.Window):
             files = glob.glob(os.path.join(dir, "*.blend"))
             if files:
                 for file in files:
-                    self.blend_files_model.append(
+                    self.blend_files_store.append(
                         default_dir_files_row, [file]
                     )
 
@@ -533,7 +533,7 @@ class MainWindow(Gtk.Window):
             elif output_type == "Single Frame":
                 return f"{output_type} ({render_task.start_frame})"
 
-        self.render_tasks_model.append([
+        self.render_tasks_store.append([
             os.path.basename(render_task.blend_file),
             render_engine_display,
             frames_argument(),
@@ -607,7 +607,7 @@ class MainWindow(Gtk.Window):
         await self.post_rendering(image_path)
 
     def update_progress(self, progress: float) -> None:
-        self.render_tasks_model[
+        self.render_tasks_store[
             self.render_queue.index(self.current_render_task)
         ][4] = progress
 
@@ -740,15 +740,17 @@ class MainWindow(Gtk.Window):
                 self.nursery.start_soon(self.render, self.current_render_task)
                 return
 
+        self.current_render_task = None
+
         self.info_bar.set_revealed(False)
 
         post_rendering_iter = self.post_rendering_combo_box.get_active_iter()
         post_rendering_model = self.post_rendering_combo_box.get_model()
-        post_rendering = post_rendering_model[post_rendering_iter][0]
+        post_rendering_action = post_rendering_model[post_rendering_iter][0]
 
         timer = config.settings["post_rendering_timer"]
 
-        if post_rendering == "Suspend":
+        if post_rendering_action == "Suspend":
             self.info_bar.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
             self.info_bar.set_message_type(Gtk.MessageType.WARNING)
             self.info_bar.connect("response", self.on_info_bar_cancel_pressed)
@@ -759,7 +761,7 @@ class MainWindow(Gtk.Window):
             if self.do_post_rendering:
                 print("Suspending...")
                 subprocess.run(["systemctl", "suspend"])
-        elif post_rendering == "Shutdown":
+        elif post_rendering_action == "Shutdown":
             self.info_bar.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
             self.info_bar.set_message_type(Gtk.MessageType.WARNING)
             self.info_bar.connect("response", self.on_info_bar_cancel_pressed)

@@ -95,12 +95,12 @@ class Config:
 
 
 class ConfigDialog(Gtk.Dialog):
-    blender_config_chooser_button = None
-    default_dir_chooser_button = None
-    output_dir_chooser_button = None
-    post_rendering_spin = None
-    render_info_model = None
-    render_info_tree_view = None
+    blender_config_chooser_button: Gtk.FileChooserButton = None
+    default_dir_chooser_button: Gtk.FileChooserButton = None
+    output_dir_chooser_button: Gtk.FileChooserButton = None
+    post_rendering_spin: Gtk.SpinButton = None
+    render_info_store: Gtk.ListStore = None
+    render_info_tree_view: Gtk.TreeView = None
 
     def __init__(self, config) -> None:
         super(ConfigDialog, self).__init__()
@@ -156,9 +156,9 @@ class ConfigDialog(Gtk.Dialog):
         self.post_rendering_spin.connect("output", self.on_output)
 
         render_info_label = create_label("Render Information (Cycles only)")
-        self.render_info_model = Gtk.ListStore(str, bool, str)
+        self.render_info_store = Gtk.ListStore(str, bool, str)
         for i in range(6):
-            self.render_info_model.append(
+            self.render_info_store.append(
                 [
                     self.config.settings["render_info"][i]["display_name"],
                     self.config.settings["render_info"][i]["visible"],
@@ -166,7 +166,7 @@ class ConfigDialog(Gtk.Dialog):
                 ]
             )
         self.render_info_tree_view = create_tree_view(
-            self.render_info_model, ["Category"]
+            self.render_info_store, ["Category"]
         )
         self.render_info_tree_view.set_reorderable(True)
         visible_toggle_renderer = Gtk.CellRendererToggle()
@@ -204,7 +204,7 @@ class ConfigDialog(Gtk.Dialog):
     def on_cell_toggled(
         self, cell_renderer_toggle: Gtk.CellRendererToggle, path: str
     ) -> None:
-        self.render_info_model[path][1] = not self.render_info_model[path][1]
+        self.render_info_store[path][1] = not self.render_info_store[path][1]
 
     def on_output(self, spin_button: Gtk.SpinButton) -> bool:
         spin_button.set_text(f"{spin_button.get_value_as_int()} s")

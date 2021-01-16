@@ -40,7 +40,7 @@ def create_entry(
 
 
 def create_file_chooser_button(
-    self, dialog_title, action: Gtk.FileChooserAction,
+    self, dialog_title: str, action: Gtk.FileChooserAction,
     button: Gtk.ButtonsType, filter_blend: bool
 ) -> Gtk.FileChooserButton:
     file_chooser_dialog = create_file_chooser_dialog(
@@ -77,14 +77,14 @@ def add_blend_filters(dialog: Gtk.FileChooserDialog) -> None:
 
 
 def create_combo_box(
-    model: Optional[Gtk.TreeModel] = None, labels: Optional[List[str]] = None
+    store: Optional[Gtk.ListStore] = None, labels: Optional[List[str]] = None
 ) -> Gtk.ComboBox:
-    if model is None:
-        model = Gtk.ListStore(str)
+    if store is None:
+        store = Gtk.ListStore(str)
     if labels is not None:
         for i in range(len(labels)):
-            model.append([labels[i]])
-    combo_box = Gtk.ComboBox.new_with_model(model)
+            store.append([labels[i]])
+    combo_box = Gtk.ComboBox.new_with_model(store)
     renderer_text = Gtk.CellRendererText()
     combo_box.pack_start(renderer_text, True)
     combo_box.add_attribute(renderer_text, "text", 0)
@@ -92,13 +92,10 @@ def create_combo_box(
     return combo_box
 
 
-def create_check_button() -> Gtk.CheckButton:
-    check_button = Gtk.CheckButton()
-    return check_button
-
-
-def create_tree_view(model: Gtk.ListStore, columns: List[str]) -> Gtk.TreeView:
-    tree_view = Gtk.TreeView(model=model)
+def create_tree_view(
+    store: Union[Gtk.ListStore, Gtk.TreeStore], columns: List[str]
+) -> Gtk.TreeView:
+    tree_view = Gtk.TreeView(model=store)
     for i, column in enumerate(columns):
         renderer_text = Gtk.CellRendererText()
         column_text = Gtk.TreeViewColumn(column, renderer_text, text=i)
