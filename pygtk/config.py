@@ -1,13 +1,14 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import Gtk  # noqa: E402
 
-import toml
-import subprocess
+import toml  # noqa: E402
+import subprocess  # noqa: E402
 
-from typing import Any, Dict
-from widgets import create_label, create_file_chooser_button, create_tree_view
+from typing import Any, Dict  # noqa: E402
+from widgets import create_label, create_file_chooser_button, \
+    create_tree_view  # noqa: E402
 
 
 class Config:
@@ -208,4 +209,3 @@ class ConfigDialog(Gtk.Dialog):
     def on_output(self, spin_button: Gtk.SpinButton) -> bool:
         spin_button.set_text(f"{spin_button.get_value_as_int()} s")
         return True
-

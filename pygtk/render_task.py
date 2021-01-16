@@ -1,5 +1,6 @@
 from typing import List
 
+
 class RenderTask:
     def __init__(
         self, blend_file: str, render_engine: str, render_device: str,

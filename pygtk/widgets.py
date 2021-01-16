@@ -1,9 +1,9 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import Gtk  # noqa: E402
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: E402
 
 
 class NumberEntry(Gtk.Entry):
@@ -40,7 +40,7 @@ def create_entry(
 
 
 def create_file_chooser_button(
-        self, dialog_title, action: Gtk.FileChooserAction,
+    self, dialog_title, action: Gtk.FileChooserAction,
     button: Gtk.ButtonsType, filter_blend: bool
 ) -> Gtk.FileChooserButton:
     file_chooser_dialog = create_file_chooser_dialog(
@@ -52,7 +52,7 @@ def create_file_chooser_button(
 
 
 def create_file_chooser_dialog(
-        self, title: str, action: Gtk.FileChooserAction, button: Gtk.ButtonsType
+    self, title: str, action: Gtk.FileChooserAction, button: Gtk.ButtonsType
 ) -> Gtk.FileChooserDialog:
     file_chooser_dialog = Gtk.FileChooserDialog(
         title,
