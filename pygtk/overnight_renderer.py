@@ -329,13 +329,13 @@ class MainWindow(Gtk.Window):
             settings["post_rendering_timer"] = config_dialog \
                 .post_rendering_spin.get_value_as_int()
             for i in range(6):
-                render_info_iter = config_dialog.render_info_model.get_iter(i)
+                render_info_iter = config_dialog.render_info_store.get_iter(i)
                 settings["render_info"][i]["display_name"] = config_dialog \
-                    .render_info_model[render_info_iter][0]
+                    .render_info_store[render_info_iter][0]
                 settings["render_info"][i]["visible"] = config_dialog \
-                    .render_info_model[render_info_iter][1]
+                    .render_info_store[render_info_iter][1]
                 settings["render_info"][i]["name"] = config_dialog \
-                    .render_info_model[render_info_iter][2]
+                    .render_info_store[render_info_iter][2]
             config.modify(settings)
         elif response == Gtk.ResponseType.CANCEL:
             pass
