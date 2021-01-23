@@ -22,35 +22,25 @@ def convert_single_frame(output_type: str, start_frame: int) -> List[str]:
 
 
 def convert_render_device(render_device: str) -> str:
-    if render_device != ".blend file":
-        return f"bpy.context.scene.cycles.device = '{render_device}'; "
-    return ""
+    return f"bpy.context.scene.cycles.device = '{render_device}'; "
 
 
 def convert_render_samples(render_samples: int, render_engine: str) -> str:
-    if render_samples != 0:
-        if render_engine == "CYCLES":
-            return f"bpy.context.scene.cycles.samples = {render_samples}; "
-        elif render_engine == "BLENDER_EEVEE":
-            return f"bpy.context.scene.eevee.taa_render_samples " \
-                   f"= {render_samples}; "
-    return ""
+    if render_engine == "CYCLES":
+        return f"bpy.context.scene.cycles.samples = {render_samples}; "
+    elif render_engine == "BLENDER_EEVEE":
+        return f"bpy.context.scene.eevee.taa_render_samples " \
+                f"= {render_samples}; "
 
 
 def convert_resolution_x(resolution_x: int) -> str:
-    if resolution_x != 0:
-        return f"bpy.context.scene.render.resolution_x = {resolution_x}; "
-    return ""
+    return f"bpy.context.scene.render.resolution_x = {resolution_x}; "
 
 
 def convert_resolution_y(resolution_y: int) -> str:
-    if resolution_y != 0:
-        return f"bpy.context.scene.render.resolution_y = {resolution_y}; "
-    return ""
+    return f"bpy.context.scene.render.resolution_y = {resolution_y}; "
 
 
 def convert_resolution_percentage(resolution_percentage: int) -> str:
-    if resolution_percentage != 0:
-        return f"bpy.context.scene.render.resolution_percentage" \
-               f" = {resolution_percentage}; "
-    return ""
+    return f"bpy.context.scene.render.resolution_percentage" \
+           f" = {resolution_percentage}; "

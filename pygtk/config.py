@@ -8,7 +8,7 @@ import subprocess  # noqa: E402
 
 from typing import Any, Dict  # noqa: E402
 from widgets import create_label, create_file_chooser_button, \
-    create_tree_view  # noqa: E402
+    create_tree_view, create_spin_button  # noqa: E402
 
 
 class Config:
@@ -145,13 +145,8 @@ class ConfigDialog(Gtk.Dialog):
         )
 
         post_rendering_label = create_label("Post Rendering Timer")
-        post_rendering_adjustment = Gtk.Adjustment(
-            upper=600, step_increment=1, page_increment=10
-        )
-        self.post_rendering_spin = Gtk.SpinButton()
-        self.post_rendering_spin.set_adjustment(post_rendering_adjustment)
-        self.post_rendering_spin.set_value(
-            self.config.settings["post_rendering_timer"]
+        self.post_rendering_spin = create_spin_button(
+            self.config.settings["post_rendering_timer"], 0, 600
         )
         self.post_rendering_spin.connect("output", self.on_output)
 

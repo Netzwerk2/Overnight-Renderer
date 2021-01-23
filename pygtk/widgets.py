@@ -6,35 +6,16 @@ from gi.repository import Gtk  # noqa: E402
 from typing import List, Optional, Union  # noqa: E402
 
 
-class NumberEntry(Gtk.Entry):
-    def __init__(self, min_number: Optional[int] = None):
-        Gtk.Entry.__init__(self)
-        self.min_number = min_number
-        self.connect("changed", self.on_changed)
-
-    def on_changed(self, *args) -> None:
-        text = self.get_text().strip()
-        self.set_text("".join([i for i in text if i in "0123456789"]))
-        if self.min_number is not None:
-            if text == "":
-                text = str(self.min_number)
-            if int(text) != 0 and int(text) < self.min_number:
-                self.set_text(str(self.min_number))
-
-
 def create_label(text: str) -> Gtk.Label:
     label = Gtk.Label(label=text)
     label.set_halign(Gtk.Align.START)
     return label
 
 
-def create_entry(
-    numbers_only: bool = True, min_number: Optional[int] = None
-) -> Union[NumberEntry, Gtk.Entry]:
-    if numbers_only:
-        entry = NumberEntry(min_number)
-    else:
-        entry = Gtk.Entry()
+def create_entry(text: Optional[str] = None) -> Gtk.Entry:
+    entry = Gtk.Entry()
+    if text is not None:
+        entry.set_text(text)
     entry.set_width_chars(42)
     return entry
 
@@ -101,3 +82,13 @@ def create_tree_view(
         column_text = Gtk.TreeViewColumn(column, renderer_text, text=i)
         tree_view.append_column(column_text)
     return tree_view
+
+
+def create_spin_button(value: int, min: int, max: int) -> Gtk.SpinButton:
+    adjustment = Gtk.Adjustment(
+        lower=min, upper=max, step_increment=1, page_increment=10
+    )
+    spin = Gtk.SpinButton()
+    spin.set_adjustment(adjustment)
+    spin.set_value(value)
+    return spin

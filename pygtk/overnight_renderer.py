@@ -16,7 +16,8 @@ import re  # noqa: E402
 from typing import List, Optional, Tuple  # noqa: E402
 
 from widgets import create_label, create_entry, create_combo_box, \
-    create_tree_view, create_file_chooser_button  # noqa: E402
+    create_tree_view, create_file_chooser_button, \
+    create_spin_button  # noqa: E402
 
 from render_task import RenderTask  # noqa: E402
 
@@ -44,13 +45,13 @@ class MainWindow(Gtk.Window):
     blend_file_chooser_button: Gtk.FileChooserButton = None
     render_engine_combo_box: Gtk.ComboBox = None
     render_device_combo_box: Gtk.ComboBox = None
-    render_samples_entry: Gtk.Entry = None
-    resolution_x_entry: Gtk.Entry = None
-    resolution_y_entry: Gtk.Entry = None
-    resolution_percentage_entry: Gtk.Entry = None
+    render_samples_spin: Gtk.SpinButton = None
+    resolution_x_spin: Gtk.SpinButton = None
+    resolution_y_spin: Gtk.SpinButton = None
+    resolution_percentage_spin: Gtk.SpinButton = None
     output_type_combo_box: Gtk.ComboBox = None
-    start_frame_entry: Gtk.Entry = None
-    end_frame_entry: Gtk.Entry = None
+    start_frame_spin: Gtk.SpinButton = None
+    end_frame_spin: Gtk.SpinButton = None
     output_format_combo_box: Gtk.ComboBox = None
     output_name_entry: Gtk.Entry = None
     output_path_chooser_button: Gtk.FileChooserButton = None
@@ -140,8 +141,6 @@ class MainWindow(Gtk.Window):
         )
         blend_files_scrolled.add(self.blend_files_tree_view)
 
-        number_entries_tooltip = "0 = Use from .blend file"
-
         blend_file_label = create_label("Path to .blend file")
         self.blend_file_chooser_button = create_file_chooser_button(
             self, "Select .blend file", Gtk.FileChooserAction.OPEN,
@@ -160,47 +159,34 @@ class MainWindow(Gtk.Window):
         self.render_engine_combo_box = create_combo_box(store=engine_store)
 
         render_device_label = create_label("Cycles Render Device")
-        render_devices = [".blend file", "CPU", "GPU"]
+        render_devices = ["CPU", "GPU"]
         self.render_device_combo_box = create_combo_box(labels=render_devices)
 
         render_samples_label = create_label("Samples")
-        self.render_samples_entry = create_entry(True, 1)
-        self.render_samples_entry.set_text("0")
-        self.render_samples_entry.set_tooltip_text(number_entries_tooltip)
+        self.render_samples_spin = create_spin_button(128, 1, 16777216)
 
         resolution_x_label = create_label("Resolution X")
-        self.resolution_x_entry = create_entry(True, 4)
-        self.resolution_x_entry.set_text("0")
-        self.resolution_x_entry.set_tooltip_text(number_entries_tooltip)
+        self.resolution_x_spin = create_spin_button(1920, 4, 65536)
 
         resolution_y_label = create_label("Resolution Y")
-        self.resolution_y_entry = create_entry(True, 4)
-        self.resolution_y_entry.set_text("0")
-        self.resolution_y_entry.set_tooltip_text(number_entries_tooltip)
+        self.resolution_y_spin = create_spin_button(1080, 4, 65536)
 
         resolution_percentage_label = create_label("Resolution %")
-        self.resolution_percentage_entry = create_entry(True, 1)
-        self.resolution_percentage_entry.set_text("0")
-        self.resolution_percentage_entry.set_tooltip_text(
-            number_entries_tooltip
-        )
+        self.resolution_percentage_spin = create_spin_button(100, 1, 32767)
 
         output_type_label = create_label("Output Type")
-        output_types = ["Animation", "Single Frame"]
+        output_types = ["Single Frame", "Animation"]
         self.output_type_combo_box = create_combo_box(labels=output_types)
-        self.output_type_combo_box.set_active(1)
         self.output_type_combo_box.connect(
             "changed", self.on_output_type_changed
         )
 
         start_frame_label = create_label("Start Frame")
-        self.start_frame_entry = create_entry(True)
-        self.start_frame_entry.set_text("1")
+        self.start_frame_spin = create_spin_button(1, 0, 1048574)
 
         end_frame_label = create_label("End Frame")
-        self.end_frame_entry = create_entry(True)
-        self.end_frame_entry.set_sensitive(False)
-        self.end_frame_entry.set_text("250")
+        self.end_frame_spin = create_spin_button(250, 0, 1048574)
+        self.end_frame_spin.set_sensitive(False)
 
         output_format_label = create_label("Output Format")
         format_store = Gtk.ListStore(str, str)
@@ -223,8 +209,7 @@ class MainWindow(Gtk.Window):
         self.output_format_combo_box = create_combo_box(store=format_store)
 
         output_name_label = create_label("Output Name")
-        self.output_name_entry = create_entry(False)
-        self.output_name_entry.set_text("Render")
+        self.output_name_entry = create_entry("Render")
 
         output_path_label = create_label("Output Path")
         self.output_path_chooser_button = create_file_chooser_button(
@@ -233,7 +218,7 @@ class MainWindow(Gtk.Window):
         )
 
         python_expressions_label = create_label("Python Expressions")
-        self.python_expressions_entry = create_entry(False)
+        self.python_expressions_entry = create_entry()
 
         post_rendering_label = create_label("After rendering is finished")
         post_rendering_options = ["Do nothing", "Suspend", "Shutdown"]
@@ -280,19 +265,19 @@ class MainWindow(Gtk.Window):
         grid.attach(render_device_label, 0, 2, 1, 1)
         grid.attach(self.render_device_combo_box, 1, 2, 1, 1)
         grid.attach(render_samples_label, 0, 3, 1, 1)
-        grid.attach(self.render_samples_entry, 1, 3, 1, 1)
+        grid.attach(self.render_samples_spin, 1, 3, 1, 1)
         grid.attach(resolution_x_label, 0, 4, 1, 1)
-        grid.attach(self.resolution_x_entry, 1, 4, 1, 1)
+        grid.attach(self.resolution_x_spin, 1, 4, 1, 1)
         grid.attach(resolution_y_label, 0, 5, 1, 1)
-        grid.attach(self.resolution_y_entry, 1, 5, 1, 1)
+        grid.attach(self.resolution_y_spin, 1, 5, 1, 1)
         grid.attach(resolution_percentage_label, 0, 6, 1, 1)
-        grid.attach(self.resolution_percentage_entry, 1, 6, 1, 1)
+        grid.attach(self.resolution_percentage_spin, 1, 6, 1, 1)
         grid.attach(output_type_label, 0, 7, 1, 1)
         grid.attach(self.output_type_combo_box, 1, 7, 1, 1)
         grid.attach(start_frame_label, 0, 8, 1, 1)
-        grid.attach(self.start_frame_entry, 1, 8, 1, 1)
+        grid.attach(self.start_frame_spin, 1, 8, 1, 1)
         grid.attach(end_frame_label, 0, 9, 1, 1)
-        grid.attach(self.end_frame_entry, 1, 9, 1, 1)
+        grid.attach(self.end_frame_spin, 1, 9, 1, 1)
         grid.attach(output_format_label, 0, 10, 1, 1)
         grid.attach(self.output_format_combo_box, 1, 10, 1, 1)
         grid.attach(output_name_label, 0, 11, 1, 1)
@@ -420,21 +405,21 @@ class MainWindow(Gtk.Window):
 
             if file_info[0] == "BLENDER_EEVEE":
                 self.render_engine_combo_box.set_active(0)
-                self.render_samples_entry.set_text(file_info[3])
+                self.render_samples_spin.set_value(int(file_info[3]))
             elif file_info[0] == "BLENDER_WORKBENCH":
                 self.render_engine_combo_box.set_active(1)
             elif file_info[0] == "CYCLES":
                 self.render_engine_combo_box.set_active(2)
-                self.render_samples_entry.set_text(file_info[2])
+                self.render_samples_spin.set_value(int(file_info[2]))
             if file_info[1] == "CPU":
-                self.render_device_combo_box.set_active(1)
+                self.render_device_combo_box.set_active(0)
             elif file_info[1] == "GPU":
-                self.render_device_combo_box.set_active(2)
-            self.resolution_x_entry.set_text(file_info[4])
-            self.resolution_y_entry.set_text(file_info[5])
-            self.resolution_percentage_entry.set_text(file_info[6])
-            self.start_frame_entry.set_text(file_info[7])
-            self.end_frame_entry.set_text(file_info[8])
+                self.render_device_combo_box.set_active(1)
+            self.resolution_x_spin.set_value(int(file_info[4]))
+            self.resolution_y_spin.set_value(int(file_info[5]))
+            self.resolution_percentage_spin.set_value(int(file_info[6]))
+            self.start_frame_spin.set_value(int(file_info[7]))
+            self.end_frame_spin.set_value(int(file_info[8]))
             self.output_path_chooser_button.set_filename(
                 os.path.dirname(file_info[10])
             )
@@ -447,9 +432,9 @@ class MainWindow(Gtk.Window):
         output_type = output_type_model[output_type_iter][0]
 
         if output_type == "Animation":
-            self.end_frame_entry.set_sensitive(True)
+            self.end_frame_spin.set_sensitive(True)
         elif output_type == "Single Frame":
-            self.end_frame_entry.set_sensitive(False)
+            self.end_frame_spin.set_sensitive(False)
 
     def on_render_clicked(self, button: Gtk.Button) -> None:
         for render_task in self.render_queue:
@@ -484,23 +469,22 @@ class MainWindow(Gtk.Window):
         render_device_model = self.render_device_combo_box.get_model()
         render_device = render_device_model[render_device_iter][0]
 
-        render_samples = int(self.render_samples_entry.get_text())
+        render_samples = self.render_samples_spin.get_value_as_int()
 
-        resolution_x = int(self.resolution_x_entry.get_text())
+        resolution_x = self.resolution_x_spin.get_value_as_int()
 
-        resolution_y = int(self.resolution_y_entry.get_text())
+        resolution_y = self.resolution_y_spin.get_value_as_int()
 
-        resolution_percentage = int(
-            self.resolution_percentage_entry.get_text()
-        )
+        resolution_percentage = self.resolution_percentage_spin \
+            .get_value_as_int()
 
         output_type_iter = self.output_type_combo_box.get_active_iter()
         output_type_model = self.output_type_combo_box.get_model()
         output_type = output_type_model[output_type_iter][0]
 
-        start_frame = int(self.start_frame_entry.get_text())
+        start_frame = self.start_frame_spin.get_value_as_int()
 
-        end_frame = int(self.end_frame_entry.get_text())
+        end_frame = self.end_frame_spin.get_value_as_int()
 
         output_format_iter = self.output_format_combo_box.get_active_iter()
         output_format_model = self.output_format_combo_box.get_model()
