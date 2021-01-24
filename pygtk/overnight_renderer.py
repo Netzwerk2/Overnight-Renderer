@@ -21,10 +21,6 @@ from widgets import create_label, create_entry, create_combo_box, \
 
 from render_task import RenderTask  # noqa: E402
 
-from convert_input_to_argument import convert_output_format, \
-    convert_animation, convert_render_device, convert_render_samples, \
-    convert_resolution_x, convert_resolution_y, \
-    convert_resolution_percentage, convert_single_frame  # noqa: E402
 
 from config import Config, ConfigDialog  # noqa: E402
 
@@ -543,38 +539,8 @@ class MainWindow(Gtk.Window):
 
     async def render(self) -> None:
         image_path = None
-        cmd_line = [
-            "blender",
-            "-b", self.current_render_task.blend_file,
-            "-E", self.current_render_task.render_engine,
-            "-o", self.current_render_task.output_file,
-        ] + convert_output_format(self.current_render_task.output_format) \
-            + convert_animation(
-                self.current_render_task.output_type,
-                self.current_render_task.start_frame,
-                self.current_render_task.end_frame
-           ) \
-            + [
-                "--python-expr",
-                "import bpy; "
-                + convert_render_device(self.current_render_task.render_device)
-                + convert_render_samples(
-                    self.current_render_task.render_samples,
-                    self.current_render_task.render_engine
-                )
-                + convert_resolution_x(self.current_render_task.resolution_x)
-                + convert_resolution_y(self.current_render_task.resolution_y)
-                + convert_resolution_percentage(
-                    self.current_render_task.resolution_percentage
-                )
-                + f"{self.current_render_task.python_expressions}"
-            ] \
-            + convert_single_frame(
-                self.current_render_task.output_type,
-                self.current_render_task.start_frame
-            )
         async with await trio.open_process(
-            cmd_line,
+            self.current_render_task.to_cmd_line(),
             stdout=subprocess.PIPE
         ) as process:
             self.process = process

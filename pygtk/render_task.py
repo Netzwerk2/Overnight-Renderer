@@ -1,5 +1,10 @@
 from typing import List
 
+from convert_input_to_argument import convert_output_format, \
+    convert_animation, convert_render_device, convert_render_samples, \
+    convert_resolution_x, convert_resolution_y, \
+    convert_resolution_percentage, convert_single_frame
+
 
 class RenderTask:
     def __init__(
@@ -24,3 +29,33 @@ class RenderTask:
         self.python_expressions = python_expressions
         self.layers = layers
         self.finished = finished
+
+    def to_cmd_line(self) -> List[str]:
+        return [
+            "blender",
+            "-b", self.blend_file,
+            "-E", self.render_engine,
+            "-o", self.output_file,
+        ] + convert_output_format(self.output_format) \
+            + convert_animation(
+                self.output_type,
+                self.start_frame,
+                self.end_frame
+           ) \
+            + [
+                "--python-expr",
+                "import bpy; "
+                + convert_render_device(self.render_device)
+                + convert_render_samples(
+                    self.render_samples,
+                    self.render_engine
+                )
+                + convert_resolution_x(self.resolution_x)
+                + convert_resolution_y(self.resolution_y)
+                + convert_resolution_percentage(self.resolution_percentage)
+                + f"{self.python_expressions}"
+            ] \
+            + convert_single_frame(
+                self.output_type,
+                self.start_frame
+            )
