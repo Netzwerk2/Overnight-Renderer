@@ -167,12 +167,17 @@ class MainWindow(Gtk.Window):
 
         resolution_x_label = create_label("Resolution X")
         self.resolution_x_spin = create_spin_button(1920, 4, 65536)
+        self.resolution_x_spin.connect("output", self.on_resolution_x_y_output)
 
         resolution_y_label = create_label("Resolution Y")
         self.resolution_y_spin = create_spin_button(1080, 4, 65536)
+        self.resolution_y_spin.connect("output", self.on_resolution_x_y_output)
 
-        resolution_percentage_label = create_label("Resolution %")
+        resolution_percentage_label = create_label("Resolution Percentage")
         self.resolution_percentage_spin = create_spin_button(100, 1, 32767)
+        self.resolution_percentage_spin.connect(
+            "output", self.on_resolution_percentage_output
+        )
 
         output_type_label = create_label("Output Type")
         output_types = ["Single Frame", "Animation"]
@@ -425,6 +430,16 @@ class MainWindow(Gtk.Window):
             )
             layers = file_info[11].split(", ")
             self.layers = layers
+
+    def on_resolution_x_y_output(self, spin_button: Gtk.SpinButton) -> bool:
+        spin_button.set_text(f"{spin_button.get_value_as_int()} px")
+        return True
+
+    def on_resolution_percentage_output(
+        self, spin_button: Gtk.SpinButton
+    ) -> bool:
+        spin_button.set_text(f"{spin_button.get_value_as_int()} %")
+        return True
 
     def on_output_type_changed(self, combo_box: Gtk.ComboBox) -> None:
         output_type_iter = combo_box.get_active_iter()
