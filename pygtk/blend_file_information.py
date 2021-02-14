@@ -1,6 +1,6 @@
 import bpy
 
-print("READY")
+print("\nREADY")
 print(bpy.context.scene.render.engine)
 print(bpy.context.scene.cycles.device)
 print(bpy.context.scene.cycles.samples)

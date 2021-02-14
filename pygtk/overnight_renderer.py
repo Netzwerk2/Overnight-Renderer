@@ -60,7 +60,9 @@ class MainWindow(Gtk.Window):
     layers: List[str] = []
     render_queue: List[RenderTask] = []
     current_render_task: Optional[RenderTask] = None
+    nusery: trio.Nursery = None
     process: Optional[trio.Process] = None
+    do_post_rendering: bool = None
 
     def __init__(self, nursery: trio.Nursery) -> None:
         super(MainWindow, self).__init__()
@@ -73,6 +75,8 @@ class MainWindow(Gtk.Window):
         self.nursery = nursery
 
         self.create_content()
+
+        self.load_blend_files()
 
     def create_content(self) -> None:
         self.stack = Gtk.Stack()
@@ -366,7 +370,8 @@ class MainWindow(Gtk.Window):
     def on_blend_cell_clicked(
         self, tree_view: Gtk.TreeView, event: Gdk.EventButton
     ) -> None:
-        if event.button == 1 and event.type == Gdk.EventType._2BUTTON_PRESS:
+        if event.button == Gdk.BUTTON_PRIMARY \
+                and event.type == Gdk.EventType._2BUTTON_PRESS:
             selection = tree_view.get_selection()
             model, tree_iter = selection.get_selected()
             path = model[tree_iter][0]
@@ -454,8 +459,6 @@ class MainWindow(Gtk.Window):
                 break
 
         self.render_button.set_sensitive(False)
-
-        self.stack.set_visible_child_name("queue")
 
         self.nursery.start_soon(self.render)
 
@@ -782,10 +785,8 @@ async def main() -> None:
         main_window = MainWindow(nursery)
         main_window.connect("delete-event", main_quit)
         main_window.show_all()
-        main_window.load_blend_files()
 
         await trio.sleep_forever()
-
 
 if __name__ == "__main__":
     trio_gtk.run(main)
